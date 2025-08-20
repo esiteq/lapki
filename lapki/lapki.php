@@ -248,7 +248,7 @@ class Lapki_Main {
             attr_name VARCHAR(64) NOT NULL,
             attr_value VARCHAR(128) NOT NULL,
             attr_display VARCHAR(128) NOT NULL,
-            lang CHAR(2) NOT NULL DEFAULT 'ua',
+            lang CHAR(2) NOT NULL DEFAULT 'uk',
             INDEX idx_entity_type (entity, entity_type),
             INDEX idx_entity_attr (entity, attr_name),
             INDEX idx_entity_lang (entity, entity_type, lang),
