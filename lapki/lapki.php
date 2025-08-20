@@ -35,6 +35,11 @@ define('LAPKI_PLUGIN_URL', plugin_dir_url(__FILE__));
 require_once LAPKI_PLUGIN_DIR . 'inc/class-eq-form.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-models.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-rest-api.php';
+if (is_admin()) {
+    require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-admin.php';
+    Lapki_Admin::init();
+}
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-cache.php';
 
 /**
  * Class Lapki_Main
@@ -80,10 +85,8 @@ class Lapki_Main {
     /**
      * Налаштування
      */
-    public static function setup() {
-        // Створення таблиць при потребі
-        self::maybe_create_tables();
-        
+    public static function setup()
+    {
         // Базові налаштування
         load_plugin_textdomain('lapki', false, dirname(plugin_basename(__FILE__)) . '/languages/');
     }
@@ -105,13 +108,9 @@ class Lapki_Main {
     /**
      * Активація плагіна
      */
-    public static function activate() {
-        self::maybe_create_tables();
-        
-        // Можна додати початкові дані
-        self::insert_default_attributes();
-        
-        flush_rewrite_rules();
+    public static function activate()
+    {
+        //
     }
     
     /**
@@ -124,66 +123,101 @@ class Lapki_Main {
     // =======================================================
     // РОБОТА З АТРИБУТАМИ
     // =======================================================
-    
-    /**
-     * Отримати опції для селекта з атрибутів
-     */
-    public static function get_attribute_options($entity, $entity_type, $attr_name, $lang = 'uk') {
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'lapki_attributes';
-        
-        $results = $wpdb->get_results($wpdb->prepare("
-            SELECT attr_value, attr_display 
-            FROM {$table_name}
-            WHERE entity = %s AND entity_type = %s AND attr_name = %s AND lang = %s
-            ORDER BY attr_display
-        ", $entity, $entity_type, $attr_name, $lang));
-        
-        $options = [];
-        foreach ($results as $row) {
-            $options[$row->attr_value] = $row->attr_display;
+
+/**
+ * 🔥 Отримати відображуване значення атрибута (З КЕШУВАННЯМ!)
+ */
+public static function get_attribute_display($entity, $entity_type, $attr_name, $attr_value, $lang = 'uk') {
+    // СПОЧАТКУ СПРОБУВАТИ КЕШ
+    if (class_exists('Lapki_Cache')) {
+        $cached_value = Lapki_Cache::get_attribute_display_fast($entity, $entity_type, $attr_name, $attr_value, $lang);
+        if ($cached_value !== null) {
+            return $cached_value;
         }
-        return $options;
     }
     
-    /**
-     * Отримати відображуване значення атрибута
-     */
-    public static function get_attribute_display($entity, $entity_type, $attr_name, $attr_value, $lang = 'uk') {
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'lapki_attributes';
-        
-        return $wpdb->get_var($wpdb->prepare("
-            SELECT attr_display 
-            FROM {$table_name}
-            WHERE entity = %s AND entity_type = %s AND attr_name = %s AND attr_value = %s AND lang = %s
-        ", $entity, $entity_type, $attr_name, $attr_value, $lang));
+    // Fallback на базу даних якщо немає в кеші
+    global $wpdb;
+    
+    $table_name = $wpdb->prefix . 'lapki_attributes';
+    
+    $result = $wpdb->get_var($wpdb->prepare("
+        SELECT attr_display 
+        FROM {$table_name}
+        WHERE entity = %s AND entity_type = %s AND attr_name = %s AND attr_value = %s AND lang = %s
+    ", $entity, $entity_type, $attr_name, $attr_value, $lang));
+    
+    return $result;
+}
+/**
+ * 🔥 Отримати опції для селекта з атрибутів (З КЕШУВАННЯМ!)
+ */
+public static function get_attribute_options($entity, $entity_type, $attr_name, $lang = 'uk') {
+    // СПОЧАТКУ СПРОБУВАТИ КЕШ
+    if (class_exists('Lapki_Cache')) {
+        $cached_options = Lapki_Cache::get_attribute_options_fast($entity, $entity_type, $attr_name, $lang);
+        if (!empty($cached_options)) {
+            return $cached_options;
+        }
     }
     
-    /**
-     * Додати новий атрибут
-     */
-    public static function add_attribute($entity, $entity_type, $attr_name, $attr_value, $attr_display, $lang = 'uk') {
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'lapki_attributes';
-        
-        return $wpdb->insert(
-            $table_name,
-            [
-                'entity' => $entity,
-                'entity_type' => $entity_type,
-                'attr_name' => $attr_name,
-                'attr_value' => $attr_value,
-                'attr_display' => $attr_display,
-                'lang' => $lang
-            ],
-            ['%s', '%s', '%s', '%s', '%s', '%s']
-        );
+    // Fallback на базу даних якщо немає в кеші
+    global $wpdb;
+    
+    $table_name = $wpdb->prefix . 'lapki_attributes';
+    
+    $results = $wpdb->get_results($wpdb->prepare("
+        SELECT attr_value, attr_display 
+        FROM {$table_name}
+        WHERE entity = %s AND entity_type = %s AND attr_name = %s AND lang = %s
+        ORDER BY attr_display
+    ", $entity, $entity_type, $attr_name, $lang));
+    
+    $options = [];
+    foreach ($results as $row) {
+        $options[$row->attr_value] = $row->attr_display;
+    }
+    return $options;
+}
+
+/**
+ * 🔥 Додати новий атрибут (З ІНВАЛІДАЦІЄЮ КЕШУ!)
+ */
+public static function add_attribute($entity, $entity_type, $attr_name, $attr_value, $attr_display, $lang = 'uk') {
+    global $wpdb;
+    
+    $table_name = $wpdb->prefix . 'lapki_attributes';
+    
+    $result = $wpdb->insert(
+        $table_name,
+        [
+            'entity' => $entity,
+            'entity_type' => $entity_type,
+            'attr_name' => $attr_name,
+            'attr_value' => $attr_value,
+            'attr_display' => $attr_display,
+            'lang' => $lang
+        ],
+        ['%s', '%s', '%s', '%s', '%s', '%s']
+    );
+    
+    // ІНВАЛІДУВАТИ КЕШ АТРИБУТІВ
+    if ($result && class_exists('Lapki_Cache')) {
+        Lapki_Cache::invalidate_attributes();
+        // Перезавантажити кеш
+        Lapki_Cache::warm_up_attributes();
     }
     
+    return $result;
+}
+
+/**
+ * Отримати типи тварин
+ */
+public static function get_animal_types($lang = 'uk') {
+    return self::get_attribute_options('animal', 'type', 'species', $lang);
+}
+
     /**
      * Отримати всі атрибути для сутності
      */
@@ -204,101 +238,6 @@ class Lapki_Main {
             $attributes[$row->attr_name][$row->attr_value] = $row->attr_display;
         }
         return $attributes;
-    }
-    
-    /**
-     * Отримати типи тварин
-     */
-    public static function get_animal_types($lang = 'uk') {
-        return self::get_attribute_options('animal', 'type', 'species', $lang);
-    }
-    
-    // =======================================================
-    // РОБОТА З БАЗОЮ ДАНИХ
-    // =======================================================
-    
-    /**
-     * Створення таблиць при потребі
-     */
-    private static function maybe_create_tables() {
-        global $wpdb;
-        
-        $attributes_table = $wpdb->prefix . 'lapki_attributes';
-        
-        // Перевіряємо чи існує таблиця атрибутів
-        if ($wpdb->get_var("SHOW TABLES LIKE '{$attributes_table}'") != $attributes_table) {
-            self::create_attributes_table();
-        }
-    }
-    
-    /**
-     * Створення таблиці атрибутів
-     */
-    private static function create_attributes_table() {
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'lapki_attributes';
-        
-        $charset_collate = $wpdb->get_charset_collate();
-        
-        $sql = "CREATE TABLE {$table_name} (
-            id INT(14) AUTO_INCREMENT PRIMARY KEY,
-            entity VARCHAR(32) NOT NULL DEFAULT 'animal',
-            entity_type VARCHAR(64) NOT NULL,
-            attr_name VARCHAR(64) NOT NULL,
-            attr_value VARCHAR(128) NOT NULL,
-            attr_display VARCHAR(128) NOT NULL,
-            lang CHAR(2) NOT NULL DEFAULT 'uk',
-            INDEX idx_entity_type (entity, entity_type),
-            INDEX idx_entity_attr (entity, attr_name),
-            INDEX idx_entity_lang (entity, entity_type, lang),
-            UNIQUE KEY unique_attr (entity, entity_type, attr_name, attr_value, lang)
-        ) {$charset_collate};";
-        
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
-    }
-    
-    /**
-     * Вставка початкових атрибутів
-     */
-    private static function insert_default_attributes() {
-        // Типи тварин
-        $animal_types = [
-            'dog' => 'Собака',
-            'cat' => 'Кіт',
-            'bird' => 'Пташка',
-            'rabbit' => 'Кролик',
-            'horse' => 'Кінь',
-            'other' => 'Інша'
-        ];
-        
-        foreach ($animal_types as $value => $display) {
-            self::add_attribute('animal', 'type', 'species', $value, $display, 'uk');
-        }
-        
-        // Розміри тварин
-        $sizes = [
-            'small' => 'Маленька',
-            'medium' => 'Середня',
-            'large' => 'Велика',
-            'extra_large' => 'Дуже велика'
-        ];
-        
-        foreach ($sizes as $value => $display) {
-            self::add_attribute('animal', 'characteristics', 'size', $value, $display, 'uk');
-        }
-        
-        // Статі тварин
-        $genders = [
-            'male' => 'Самець',
-            'female' => 'Самка',
-            'unknown' => 'Невідомо'
-        ];
-        
-        foreach ($genders as $value => $display) {
-            self::add_attribute('animal', 'characteristics', 'gender', $value, $display, 'uk');
-        }
     }
     
     // =======================================================
@@ -342,38 +281,22 @@ class Lapki_Main {
             'count' => count($results)
         ]);
     }
-    
-    /**
-     * Пошук тваринок (заглушка)
-     */
-    private static function search_pets($params) {
-        // Тут буде логіка пошуку через API або локальну базу
-        return [
-            [
-                'id' => 1,
-                'name' => 'Мурчик',
-                'species' => 'cat',
-                'breed' => 'Дворовий',
-                'age' => 'young',
-                'size' => 'medium',
-                'gender' => 'male',
-                'description' => 'Дуже добрий та грайливий котик',
-                'photo' => 'https://example.com/cat1.jpg',
-                'shelter' => 'Притулок "Теплі лапи"'
-            ],
-            [
-                'id' => 2,
-                'name' => 'Бобік',
-                'species' => 'dog',
-                'breed' => 'Німецька вівчарка',
-                'age' => 'adult',
-                'size' => 'large',
-                'gender' => 'male',
-                'description' => 'Розумний та відданий пес',
-                'photo' => 'https://example.com/dog1.jpg',
-                'shelter' => 'Притулок "Добрі серця"'
-            ]
-        ];
+    public static function init_cache() {
+        if (class_exists('Lapki_Cache')) {
+            // Перевірити чи є кеш атрибутів, якщо ні - завантажити
+            $cached_attrs = Lapki_Cache::get('all_attributes', Lapki_Cache::PREFIX_ATTRIBUTES);
+            if ($cached_attrs === false) {
+                Lapki_Cache::warm_up_attributes();
+                
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('Lapki: Attributes cache warmed up on init');
+                }
+            } else {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('Lapki: Attributes cache already exists');
+                }
+            }
+        }
     }
 }
 
