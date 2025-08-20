@@ -1,8 +1,8 @@
-﻿<?php
+<?php
 /**
  * Plugin Name: Lapki
  * Plugin URI: https://esiteq.com/projects/lapki/
- * Description: Pet adoption platform inspired by petfinder.com, localized for Ukraine. Search and adopt dogs, cats, birds and other animals from shelters and rescue organizations.
+ * Description: Платформа пошуку та прилаштування тварин, інспірована petfinder.com, локалізована для України. Пошук та прилаштування собак, котів, птахів та інших тварин з притулків.
  * Version: 2.0.0
  * Author: Oleksii Bugrov
  * Author URI: https://esiteq.com/
@@ -33,6 +33,8 @@ define('LAPKI_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Include required files
 require_once LAPKI_PLUGIN_DIR . 'inc/class-eq-form.php';
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-models.php';
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-rest-api.php';
 
 /**
  * Class Lapki_Main
@@ -45,12 +47,12 @@ class Lapki_Main {
     /**
      * Версія плагіна/проекту
      */
-    const VERSION = '1.0.0';
+    const VERSION = '2.0.0';
     
     /**
      * Підтримувані мови
      */
-    const SUPPORTED_LANGS = ['ua', 'en'];
+    const SUPPORTED_LANGS = ['uk', 'en'];
     
     /**
      * Типи сутностей
@@ -69,27 +71,54 @@ class Lapki_Main {
         // Хуки для AJAX
         add_action('wp_ajax_lapki_search', [__CLASS__, 'ajax_search_pets']);
         add_action('wp_ajax_nopriv_lapki_search', [__CLASS__, 'ajax_search_pets']);
+        
+        // Активація/деактивація плагіна
+        register_activation_hook(__FILE__, [__CLASS__, 'activate']);
+        register_deactivation_hook(__FILE__, [__CLASS__, 'deactivate']);
     }
     
     /**
      * Налаштування
      */
     public static function setup() {
+        // Створення таблиць при потребі
+        self::maybe_create_tables();
+        
         // Базові налаштування
+        load_plugin_textdomain('lapki', false, dirname(plugin_basename(__FILE__)) . '/languages/');
     }
     
     /**
      * Завантаження скриптів і стилів
      */
     public static function enqueue_scripts() {
-        wp_enqueue_script('lapki-main', plugin_dir_url(__FILE__) . 'js/lapki-main.js', ['jquery'], self::VERSION, true);
-        wp_enqueue_style('lapki-main', plugin_dir_url(__FILE__) . 'css/lapki-main.css', [], self::VERSION);
+        wp_enqueue_script('lapki-main', LAPKI_PLUGIN_URL . 'js/lapki-main.js', ['jquery'], self::VERSION, true);
+        wp_enqueue_style('lapki-main', LAPKI_PLUGIN_URL . 'css/lapki-main.css', [], self::VERSION);
         
         // Локалізація для AJAX
         wp_localize_script('lapki-main', 'lapki_ajax', [
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('lapki_nonce')
         ]);
+    }
+    
+    /**
+     * Активація плагіна
+     */
+    public static function activate() {
+        self::maybe_create_tables();
+        
+        // Можна додати початкові дані
+        self::insert_default_attributes();
+        
+        flush_rewrite_rules();
+    }
+    
+    /**
+     * Деактивація плагіна
+     */
+    public static function deactivate() {
+        flush_rewrite_rules();
     }
     
     // =======================================================
@@ -99,7 +128,7 @@ class Lapki_Main {
     /**
      * Отримати опції для селекта з атрибутів
      */
-    public static function get_attribute_options($entity, $entity_type, $attr_name, $lang = 'ua') {
+    public static function get_attribute_options($entity, $entity_type, $attr_name, $lang = 'uk') {
         global $wpdb;
         
         $table_name = $wpdb->prefix . 'lapki_attributes';
@@ -121,7 +150,7 @@ class Lapki_Main {
     /**
      * Отримати відображуване значення атрибута
      */
-    public static function get_attribute_display($entity, $entity_type, $attr_name, $attr_value, $lang = 'ua') {
+    public static function get_attribute_display($entity, $entity_type, $attr_name, $attr_value, $lang = 'uk') {
         global $wpdb;
         
         $table_name = $wpdb->prefix . 'lapki_attributes';
@@ -136,7 +165,7 @@ class Lapki_Main {
     /**
      * Додати новий атрибут
      */
-    public static function add_attribute($entity, $entity_type, $attr_name, $attr_value, $attr_display, $lang = 'ua') {
+    public static function add_attribute($entity, $entity_type, $attr_name, $attr_value, $attr_display, $lang = 'uk') {
         global $wpdb;
         
         $table_name = $wpdb->prefix . 'lapki_attributes';
@@ -158,7 +187,7 @@ class Lapki_Main {
     /**
      * Отримати всі атрибути для сутності
      */
-    public static function get_entity_attributes($entity, $entity_type, $lang = 'ua') {
+    public static function get_entity_attributes($entity, $entity_type, $lang = 'uk') {
         global $wpdb;
         
         $table_name = $wpdb->prefix . 'lapki_attributes';
@@ -180,7 +209,7 @@ class Lapki_Main {
     /**
      * Отримати типи тварин
      */
-    public static function get_animal_types($lang = 'ua') {
+    public static function get_animal_types($lang = 'uk') {
         return self::get_attribute_options('animal', 'type', 'species', $lang);
     }
     
@@ -219,7 +248,7 @@ class Lapki_Main {
             attr_name VARCHAR(64) NOT NULL,
             attr_value VARCHAR(128) NOT NULL,
             attr_display VARCHAR(128) NOT NULL,
-            lang CHAR(2) NOT NULL DEFAULT 'en',
+            lang CHAR(2) NOT NULL DEFAULT 'ua',
             INDEX idx_entity_type (entity, entity_type),
             INDEX idx_entity_attr (entity, attr_name),
             INDEX idx_entity_lang (entity, entity_type, lang),
@@ -230,7 +259,47 @@ class Lapki_Main {
         dbDelta($sql);
     }
     
-
+    /**
+     * Вставка початкових атрибутів
+     */
+    private static function insert_default_attributes() {
+        // Типи тварин
+        $animal_types = [
+            'dog' => 'Собака',
+            'cat' => 'Кіт',
+            'bird' => 'Пташка',
+            'rabbit' => 'Кролик',
+            'horse' => 'Кінь',
+            'other' => 'Інша'
+        ];
+        
+        foreach ($animal_types as $value => $display) {
+            self::add_attribute('animal', 'type', 'species', $value, $display, 'uk');
+        }
+        
+        // Розміри тварин
+        $sizes = [
+            'small' => 'Маленька',
+            'medium' => 'Середня',
+            'large' => 'Велика',
+            'extra_large' => 'Дуже велика'
+        ];
+        
+        foreach ($sizes as $value => $display) {
+            self::add_attribute('animal', 'characteristics', 'size', $value, $display, 'uk');
+        }
+        
+        // Статі тварин
+        $genders = [
+            'male' => 'Самець',
+            'female' => 'Самка',
+            'unknown' => 'Невідомо'
+        ];
+        
+        foreach ($genders as $value => $display) {
+            self::add_attribute('animal', 'characteristics', 'gender', $value, $display, 'uk');
+        }
+    }
     
     // =======================================================
     // ДОПОМІЖНІ МЕТОДИ
@@ -241,7 +310,7 @@ class Lapki_Main {
      */
     public static function get_current_lang() {
         // Можна інтегрувати з WPML, Polylang тощо
-        return defined('ICL_LANGUAGE_CODE') ? ICL_LANGUAGE_CODE : 'ua';
+        return defined('ICL_LANGUAGE_CODE') ? ICL_LANGUAGE_CODE : 'uk';
     }
     
     /**
@@ -252,26 +321,69 @@ class Lapki_Main {
     }
     
     /**
-     * AJAX пошук тваринок (заглушка)
+     * AJAX пошук тваринок
      */
     public static function ajax_search_pets() {
         check_ajax_referer('lapki_nonce', 'nonce');
         
-        // TODO: Реалізувати пошук
-        wp_send_json_success(['message' => 'Search functionality coming soon']);
+        $search_params = [
+            'species' => sanitize_text_field($_POST['species'] ?? ''),
+            'location' => sanitize_text_field($_POST['location'] ?? ''),
+            'size' => sanitize_text_field($_POST['size'] ?? ''),
+            'gender' => sanitize_text_field($_POST['gender'] ?? ''),
+            'age' => sanitize_text_field($_POST['age'] ?? ''),
+        ];
+        
+        // TODO: Реалізувати пошук через API або локальну базу
+        $results = self::search_pets($search_params);
+        
+        wp_send_json_success([
+            'pets' => $results,
+            'count' => count($results)
+        ]);
+    }
+    
+    /**
+     * Пошук тваринок (заглушка)
+     */
+    private static function search_pets($params) {
+        // Тут буде логіка пошуку через API або локальну базу
+        return [
+            [
+                'id' => 1,
+                'name' => 'Мурчик',
+                'species' => 'cat',
+                'breed' => 'Дворовий',
+                'age' => 'young',
+                'size' => 'medium',
+                'gender' => 'male',
+                'description' => 'Дуже добрий та грайливий котик',
+                'photo' => 'https://example.com/cat1.jpg',
+                'shelter' => 'Притулок "Теплі лапи"'
+            ],
+            [
+                'id' => 2,
+                'name' => 'Бобік',
+                'species' => 'dog',
+                'breed' => 'Німецька вівчарка',
+                'age' => 'adult',
+                'size' => 'large',
+                'gender' => 'male',
+                'description' => 'Розумний та відданий пес',
+                'photo' => 'https://example.com/dog1.jpg',
+                'shelter' => 'Притулок "Добрі серця"'
+            ]
+        ];
     }
 }
 
-// Ініціалізація
-if (!function_exists('lapki'))
-{
-    function lapki()
-    {
-        global $_lapki;
-        if (!isset($_lapki)) $_lapki = new Lapki_Main;
-        return $_lapki;
+// Ініціалізація плагіна
+Lapki_Main::init();
+
+// Глобальна функція для доступу до плагіна
+if (!function_exists('lapki')) {
+    function lapki() {
+        return Lapki_Main::class;
     }
 }
-
-lapki();
 ?>
