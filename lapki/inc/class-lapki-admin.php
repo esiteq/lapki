@@ -210,10 +210,17 @@ class Lapki_Animals_List_Table extends WP_List_Table {
      */
     protected function column_photo($item) {
         $photo_url = $this->get_primary_photo($item['id']);
+        
         if ($photo_url) {
-            return sprintf('<img src="%s" alt="%s" />', esc_url($photo_url), esc_attr($item['name']));
+            return sprintf(
+                '<img src="%s" alt="%s" style="width:60px;height:60px;object-fit:cover;border-radius:4px;" />',
+                esc_url($photo_url),
+                esc_attr($item['name'])
+            );
         }
-        return '<div style="width:60px;height:60px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#999;">📷</div>';
+        
+        // Плейсхолдер якщо немає фото
+        return '<div style="width:60px;height:60px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#999;font-size:24px;">📷</div>';
     }
     
     /**
@@ -409,6 +416,7 @@ class Lapki_Animals_List_Table extends WP_List_Table {
     /**
      * Отримати головне фото тварини
      */
+    /*
     private function get_primary_photo($animal_id) {
         global $wpdb;
         
@@ -427,7 +435,29 @@ class Lapki_Animals_List_Table extends WP_List_Table {
         
         return $photo ? wp_upload_dir()['baseurl'] . $photo : '';
     }
+    */
+    /**
+ * Отримати головне фото тварини (оновлений метод)
+ */
+private function get_primary_photo($animal_id) {
+    // Використовувати новий метод з Lapki_Media
+    return Lapki_Media::get_primary_photo_url('animal', $animal_id, true); // true = thumbnail
+}
+
+/**
+ * Альтернативно, якщо хочеш більше контролю:
+ */
+private function get_primary_photo_advanced($animal_id) {
+    $photo = Lapki_Media::get_primary_photo('animal', $animal_id);
     
+    if ($photo && !empty($photo['file_path'])) {
+        // Повернути thumbnail URL
+        return $photo['thumbnail_url'];
+    }
+    
+    return '';
+}
+
     /**
      * Отримати відображуване значення атрибута
      */

@@ -432,6 +432,324 @@ class Lapki_Organization extends Lapki_Model {
 class Lapki_Media extends Lapki_Model {
     protected static $table_name = 'lapki_media';
     
+    /**
+     * Отримати медіафайли по сутності з URL
+     */
+    public static function get_by_entity($entity_type, $entity_id) {
+        global $wpdb;
+        
+        $media = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " 
+             WHERE entity_type = %s AND entity_id = %d AND is_active = 1 
+             ORDER BY is_primary DESC, sort_order ASC",
+            $entity_type, $entity_id
+        ), ARRAY_A);
+        
+        // Додати URL до кожного медіафайлу
+        foreach ($media as &$item) {
+            $item = self::add_urls_to_media($item);
+        }
+        
+        return $media;
+    }
+    
+    /**
+     * Отримати головне фото з URL
+     */
+    public static function get_primary_photo($entity_type, $entity_id) {
+        global $wpdb;
+        
+        $media = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " 
+             WHERE entity_type = %s AND entity_id = %d AND media_type = 'photo' 
+             AND is_primary = 1 AND is_active = 1",
+            $entity_type, $entity_id
+        ), ARRAY_A);
+        
+        if ($media) {
+            $media = self::add_urls_to_media($media);
+        }
+        
+        return $media;
+    }
+    
+    /**
+     * Отримати URL головного фото (для зворотної сумісності)
+     */
+    public static function get_primary_photo_url($entity_type, $entity_id, $thumbnail = false) {
+        global $wpdb;
+        
+        $filename = $wpdb->get_var($wpdb->prepare(
+            "SELECT file_path FROM " . self::get_table_name() . " 
+             WHERE entity_type = %s AND entity_id = %d AND media_type = 'photo' 
+             AND is_primary = 1 AND is_active = 1 
+             ORDER BY sort_order ASC LIMIT 1",
+            $entity_type, $entity_id
+        ));
+        
+        if (!$filename) {
+            return '';
+        }
+        
+        return Lapki_Main::get_image_url($filename, $thumbnail);
+    }
+    
+    /**
+     * Додати URL до медіафайлу
+     */
+    private static function add_urls_to_media($media) {
+        if (!$media || empty($media['file_path'])) {
+            return $media;
+        }
+        
+        $filename = $media['file_path'];
+        
+        // Додати URL в залежності від типу медіа
+        switch ($media['media_type']) {
+            case 'photo':
+                $media['url'] = Lapki_Main::get_image_url($filename);
+                $media['thumbnail_url'] = Lapki_Main::get_image_url($filename, true);
+                $media['has_thumbnail'] = Lapki_Main::image_exists($filename, true);
+                break;
+                
+            case 'video':
+                // Для відео можна додати логіку пізніше
+                if (!empty($media['video_url'])) {
+                    $media['url'] = $media['video_url'];
+                } else {
+                    $media['url'] = Lapki_Main::get_media_base_url() . '/videos/' . $filename;
+                }
+                break;
+                
+            default:
+                $media['url'] = Lapki_Main::get_media_base_url() . '/' . $filename;
+        }
+        
+        return $media;
+    }
+    
+    /**
+     * Створити новий медіафайл
+     */
+    public static function create($data) {
+        global $wpdb;
+        
+        // Перевірити обов'язкові поля
+        if (empty($data['entity_type']) || empty($data['entity_id']) || empty($data['media_type'])) {
+            return false;
+        }
+        
+        $defaults = [
+            'filename' => '',
+            'file_path' => '', // Тепер зберігаємо тільки назву файлу
+            'title' => '',
+            'description' => '',
+            'alt_text' => '',
+            'sort_order' => 0,
+            'is_primary' => 0,
+            'is_active' => 1,
+            'uploaded_at' => current_time('mysql'),
+            'updated_at' => current_time('mysql')
+        ];
+        
+        $data = wp_parse_args($data, $defaults);
+        
+        // Якщо це головне фото, зробити інші не головними
+        if ($data['is_primary'] && $data['media_type'] === 'photo') {
+            self::unset_primary_photo($data['entity_type'], $data['entity_id']);
+        }
+        
+        $result = $wpdb->insert(
+            self::get_table_name(),
+            $data,
+            ['%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%s']
+        );
+        
+        return $result !== false ? $wpdb->insert_id : false;
+    }
+    
+    /**
+     * Завантажити та обробити зображення
+     */
+    public static function upload_image($file, $entity_type, $entity_id, $animal_name = '', $is_primary = false) {
+        // Перевірити файл
+        if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return new WP_Error('upload_error', 'Файл не завантажений');
+        }
+        
+        // Валідація зображення
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $file_type = wp_check_filetype($file['name']);
+        
+        if (!in_array($file_type['type'], $allowed_types)) {
+            return new WP_Error('invalid_type', 'Невірний тип файлу');
+        }
+        
+        // Створити папки якщо їх немає
+        Lapki_Main::create_media_directories();
+        
+        // Генерувати унікальну назву файлу
+        $filename = Lapki_Main::generate_filename($file['name'], $animal_name);
+        $destination = Lapki_Main::get_image_path($filename);
+        
+        // Переміщення файлу
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            return new WP_Error('move_error', 'Не вдалося перемістити файл');
+        }
+        
+        // Отримати інформацію про зображення
+        $image_info = getimagesize($destination);
+        if ($image_info === false) {
+            unlink($destination);
+            return new WP_Error('invalid_image', 'Файл не є валідним зображенням');
+        }
+        
+        // Створити thumbnail
+        Lapki_Main::create_thumbnail($filename);
+        
+        // Створити запис в БД
+        $media_data = [
+            'entity_type' => $entity_type,
+            'entity_id' => $entity_id,
+            'media_type' => 'photo',
+            'filename' => $file['name'],
+            'file_path' => $filename, // Зберігаємо тільки назву файлу!
+            'width' => $image_info[0],
+            'height' => $image_info[1],
+            'file_size' => filesize($destination),
+            'is_primary' => $is_primary ? 1 : 0
+        ];
+        
+        $media_id = self::create($media_data);
+        
+        if (!$media_id) {
+            // Видалити файли якщо не вдалося створити запис
+            Lapki_Main::delete_image($filename);
+            return new WP_Error('db_error', 'Не вдалося створити запис в БД');
+        }
+        
+        return [
+            'media_id' => $media_id,
+            'filename' => $filename,
+            'url' => Lapki_Main::get_image_url($filename),
+            'thumbnail_url' => Lapki_Main::get_image_url($filename, true)
+        ];
+    }
+    
+    /**
+     * Видалити медіафайл
+     */
+    public static function delete($media_id) {
+        global $wpdb;
+        
+        // Отримати інформацію про файл
+        $media = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " WHERE id = %d",
+            $media_id
+        ), ARRAY_A);
+        
+        if (!$media) {
+            return false;
+        }
+        
+        // Видалити файли якщо це фото
+        if ($media['media_type'] === 'photo' && !empty($media['file_path'])) {
+            Lapki_Main::delete_image($media['file_path']);
+        }
+        
+        // Видалити запис з БД
+        return $wpdb->delete(
+            self::get_table_name(),
+            ['id' => $media_id],
+            ['%d']
+        );
+    }
+    
+    /**
+     * Зробити фото неголовним
+     */
+    private static function unset_primary_photo($entity_type, $entity_id) {
+        global $wpdb;
+        
+        return $wpdb->update(
+            self::get_table_name(),
+            ['is_primary' => 0],
+            [
+                'entity_type' => $entity_type,
+                'entity_id' => $entity_id,
+                'media_type' => 'photo',
+                'is_active' => 1
+            ],
+            ['%d'],
+            ['%s', '%d', '%s', '%d']
+        );
+    }
+    
+    /**
+     * Встановити головне фото
+     */
+    public static function set_primary_photo($media_id) {
+        global $wpdb;
+        
+        // Отримати інформацію про медіафайл
+        $media = $wpdb->get_row($wpdb->prepare(
+            "SELECT entity_type, entity_id FROM " . self::get_table_name() . " 
+             WHERE id = %d AND media_type = 'photo'",
+            $media_id
+        ), ARRAY_A);
+        
+        if (!$media) {
+            return false;
+        }
+        
+        // Зробити всі інші фото неголовними
+        self::unset_primary_photo($media['entity_type'], $media['entity_id']);
+        
+        // Встановити це фото як головне
+        return $wpdb->update(
+            self::get_table_name(),
+            ['is_primary' => 1],
+            ['id' => $media_id],
+            ['%d'],
+            ['%d']
+        );
+    }
+    
+    /**
+     * Видалити всі медіафайли сутності
+     */
+    public static function delete_by_entity($entity_type, $entity_id) {
+        global $wpdb;
+        
+        // Отримати всі медіафайли
+        $media_files = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, file_path, media_type FROM " . self::get_table_name() . " 
+             WHERE entity_type = %s AND entity_id = %d",
+            $entity_type, $entity_id
+        ), ARRAY_A);
+        
+        // Видалити файли
+        foreach ($media_files as $media) {
+            if ($media['media_type'] === 'photo' && !empty($media['file_path'])) {
+                Lapki_Main::delete_image($media['file_path']);
+            }
+        }
+        
+        // Видалити записи з БД
+        return $wpdb->delete(
+            self::get_table_name(),
+            [
+                'entity_type' => $entity_type,
+                'entity_id' => $entity_id
+            ],
+            ['%s', '%d']
+        );
+    }
+}
+/*
+class Lapki_Media extends Lapki_Model {
+    protected static $table_name = 'lapki_media';
+    
     public static function get_by_entity($entity_type, $entity_id) {
         global $wpdb;
         
@@ -467,6 +785,7 @@ class Lapki_Media extends Lapki_Model {
         );
     }
 }
+*/
 
 /**
  * Клас для роботи з тегами
