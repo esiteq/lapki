@@ -1,0 +1,143 @@
+# English translation of Lapki
+# Copyright (C) 2026 Oleksii Bugrov
+msgid ""
+msgstr ""
+"Project-Id-Version: Lapki 2.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/lapki\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Domain: lapki\n"
+
+msgid "Lapki"
+msgstr "Lapki"
+
+msgid "https://esiteq.com/projects/lapki/"
+msgstr "https://esiteq.com/projects/lapki/"
+
+msgid "Платформа пошуку та прилаштування тварин, інспірована petfinder.com, локалізована для України. Пошук та прилаштування собак, котів, птахів та інших тварин з притулків."
+msgstr "A pet adoption platform inspired by petfinder.com, localized for Ukraine. Search and adopt dogs, cats, birds and other animals from shelters."
+
+msgid "Oleksii Bugrov"
+msgstr "Oleksii Bugrov"
+
+msgid "https://esiteq.com/"
+msgstr "https://esiteq.com/"
+
+msgid "Lapki - Тварини"
+msgstr "Lapki - Animals"
+
+msgid "Тварини"
+msgstr "Animals"
+
+msgid "Додати тварину"
+msgstr "Add Animal"
+
+msgid "Організації"
+msgstr "Organizations"
+
+msgid "Атрибути"
+msgstr "Attributes"
+
+msgid "Налаштування Lapki"
+msgstr "Lapki Settings"
+
+msgid "Налаштування"
+msgstr "Settings"
+
+msgid "Дистанція пошуку за замовчуванням (км)"
+msgstr "Default search distance (km)"
+
+msgid "Використовується в геопошуку тварин, якщо клієнт не вказав свою відстань."
+msgstr "Used in animal geo-search when the client does not specify a distance."
+
+msgid "Тварин на сторінці за замовчуванням"
+msgstr "Default animals per page"
+
+msgid "Дефолтний розмір сторінки в REST API (GET /animals) та на фронтенді. Максимум — 100."
+msgstr "Default page size in the REST API (GET /animals) and on the frontend. Maximum is 100."
+
+msgid "Email для нотифікацій"
+msgstr "Notification email"
+
+msgid "Резервна адреса для сповіщень про нові заявки на усиновлення, якщо в організації не вказано email."
+msgstr "Fallback address for new adoption application notifications when the organization has no email set."
+
+msgid "Зберегти налаштування"
+msgstr "Save Settings"
+
+msgid "Тварину не знайдено"
+msgstr "Animal not found"
+
+msgid "Поле '%s' є обов'язковим"
+msgstr "The '%s' field is required"
+
+msgid "Не вдалося створити тварину"
+msgstr "Failed to create the animal"
+
+msgid "Не вдалося оновити тварину"
+msgstr "Failed to update the animal"
+
+msgid "Не вдалося видалити тварину"
+msgstr "Failed to delete the animal"
+
+msgid "Тип тварини не знайдено"
+msgstr "Animal type not found"
+
+msgid "Організацію не знайдено"
+msgstr "Organization not found"
+
+msgid "Не вдалося створити організацію"
+msgstr "Failed to create the organization"
+
+msgid "Не вдалося оновити організацію"
+msgstr "Failed to update the organization"
+
+msgid "Не вдалося видалити організацію"
+msgstr "Failed to delete the organization"
+
+msgid "Файл не надіслано"
+msgstr "No file was uploaded"
+
+msgid "Дозволені тільки зображення (JPG, PNG, GIF, WebP)"
+msgstr "Only images are allowed (JPG, PNG, GIF, WebP)"
+
+msgid "Файл занадто великий. Максимум 10MB"
+msgstr "File is too large. Maximum is 10MB"
+
+msgid "Не вдалося завантажити файл"
+msgstr "Failed to upload the file"
+
+msgid "Помилка додавання до бази даних"
+msgstr "Error saving to the database"
+
+msgid "Медіа не знайдено"
+msgstr "Media not found"
+
+msgid "Не вдалося видалити медіа"
+msgstr "Failed to delete the media"
+
+msgid "Поле '%s' обов'язкове"
+msgstr "The '%s' field is required"
+
+msgid "Помилка створення атрибуту"
+msgstr "Error creating the attribute"
+
+msgid "Атрибут не знайдено"
+msgstr "Attribute not found"
+
+msgid "Не вдалося встановити головне фото"
+msgstr "Failed to set the primary photo"
+
+msgid "Параметр 'organization_id' обов'язковий"
+msgstr "The 'organization_id' parameter is required"
+
+msgid "Не вдалося надіслати заявку"
+msgstr "Failed to submit the application"
+
+msgid "Заявку не знайдено"
+msgstr "Application not found"
+
+msgid "Некоректний статус"
+msgstr "Invalid status"

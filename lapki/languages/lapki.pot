@@ -1,0 +1,211 @@
+# Copyright (C) 2026 Oleksii Bugrov
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Lapki 2.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/lapki\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-07-07T08:21:47+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.10.0\n"
+"X-Domain: lapki\n"
+
+#. Plugin Name of the plugin
+#: lapki.php
+#: inc/class-lapki-admin.php:29
+msgid "Lapki"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: lapki.php
+msgid "https://esiteq.com/projects/lapki/"
+msgstr ""
+
+#. Description of the plugin
+#: lapki.php
+msgid "Платформа пошуку та прилаштування тварин, інспірована petfinder.com, локалізована для України. Пошук та прилаштування собак, котів, птахів та інших тварин з притулків."
+msgstr ""
+
+#. Author of the plugin
+#: lapki.php
+msgid "Oleksii Bugrov"
+msgstr ""
+
+#. Author URI of the plugin
+#: lapki.php
+msgid "https://esiteq.com/"
+msgstr ""
+
+#: inc/class-lapki-admin.php:28
+msgid "Lapki - Тварини"
+msgstr ""
+
+#: inc/class-lapki-admin.php:40
+#: inc/class-lapki-admin.php:41
+msgid "Тварини"
+msgstr ""
+
+#: inc/class-lapki-admin.php:50
+#: inc/class-lapki-admin.php:51
+msgid "Додати тварину"
+msgstr ""
+
+#: inc/class-lapki-admin.php:60
+#: inc/class-lapki-admin.php:61
+msgid "Організації"
+msgstr ""
+
+#: inc/class-lapki-admin.php:70
+#: inc/class-lapki-admin.php:71
+msgid "Атрибути"
+msgstr ""
+
+#: inc/class-lapki-admin.php:80
+#: inc/class-lapki-admin.php:119
+msgid "Налаштування Lapki"
+msgstr ""
+
+#: inc/class-lapki-admin.php:81
+msgid "Налаштування"
+msgstr ""
+
+#: inc/class-lapki-admin.php:124
+msgid "Дистанція пошуку за замовчуванням (км)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:128
+msgid "Використовується в геопошуку тварин, якщо клієнт не вказав свою відстань."
+msgstr ""
+
+#: inc/class-lapki-admin.php:132
+msgid "Тварин на сторінці за замовчуванням"
+msgstr ""
+
+#: inc/class-lapki-admin.php:136
+msgid "Дефолтний розмір сторінки в REST API (GET /animals) та на фронтенді. Максимум — 100."
+msgstr ""
+
+#: inc/class-lapki-admin.php:140
+msgid "Email для нотифікацій"
+msgstr ""
+
+#: inc/class-lapki-admin.php:144
+msgid "Резервна адреса для сповіщень про нові заявки на усиновлення, якщо в організації не вказано email."
+msgstr ""
+
+#: inc/class-lapki-admin.php:148
+msgid "Зберегти налаштування"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:307
+#: inc/class-lapki-rest-api.php:364
+#: inc/class-lapki-rest-api.php:390
+#: inc/class-lapki-rest-api.php:875
+#: inc/class-lapki-rest-api.php:1150
+msgid "Тварину не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:331
+#: inc/class-lapki-rest-api.php:518
+msgid "Поле '%s' є обов'язковим"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:348
+msgid "Не вдалося створити тварину"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:375
+msgid "Не вдалося оновити тварину"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:396
+msgid "Не вдалося видалити тварину"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:440
+msgid "Тип тварини не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:502
+#: inc/class-lapki-rest-api.php:546
+#: inc/class-lapki-rest-api.php:565
+msgid "Організацію не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:530
+msgid "Не вдалося створити організацію"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:551
+msgid "Не вдалося оновити організацію"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:570
+msgid "Не вдалося видалити організацію"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:881
+msgid "Файл не надіслано"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:889
+msgid "Дозволені тільки зображення (JPG, PNG, GIF, WebP)"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:894
+msgid "Файл занадто великий. Максимум 10MB"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:925
+msgid "Не вдалося завантажити файл"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:956
+msgid "Помилка додавання до бази даних"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:973
+#: inc/class-lapki-rest-api.php:1100
+msgid "Медіа не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:984
+msgid "Не вдалося видалити медіа"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1042
+msgid "Поле '%s' обов'язкове"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1048
+msgid "Помилка створення атрибуту"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1062
+#: inc/class-lapki-rest-api.php:1085
+msgid "Атрибут не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1107
+msgid "Не вдалося встановити головне фото"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1133
+msgid "Параметр 'organization_id' обов'язковий"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1170
+msgid "Не вдалося надіслати заявку"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1187
+msgid "Заявку не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1199
+msgid "Некоректний статус"
+msgstr ""

@@ -26,20 +26,24 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LAPKI_VERSION', '2.0.0');
+define('LAPKI_VERSION', '2.0.10');
 define('LAPKI_PLUGIN_FILE', __FILE__);
 define('LAPKI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LAPKI_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Include required files
-require_once LAPKI_PLUGIN_DIR . 'inc/class-eq-form.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-models.php';
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-roles.php';
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-migrations.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-rest-api.php';
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-template-loader.php';
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-frontend.php';
+Lapki_Frontend::init();
+
 if (is_admin()) {
     require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-admin.php';
     Lapki_Admin::init();
 }
-require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-cache.php';
 
 /**
  * Class Lapki_Main
@@ -85,12 +89,11 @@ class Lapki_Main {
      */
     public static function init() {
         add_action('init', [__CLASS__, 'setup']);
-        add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_scripts']);
-        
-        // Хуки для AJAX
-        add_action('wp_ajax_lapki_search', [__CLASS__, 'ajax_search_pets']);
-        add_action('wp_ajax_nopriv_lapki_search', [__CLASS__, 'ajax_search_pets']);
-        
+
+        // Автоматичний апгрейд схеми БД/ролей для вже активних інсталяцій
+        // (без потреби деактивувати/активувати плагін після оновлення коду)
+        add_action('plugins_loaded', ['Lapki_Migrations', 'maybe_migrate']);
+
         // Активація/деактивація плагіна
         register_activation_hook(__FILE__, [__CLASS__, 'activate']);
         register_deactivation_hook(__FILE__, [__CLASS__, 'deactivate']);
@@ -106,25 +109,14 @@ class Lapki_Main {
     }
     
     /**
-     * Завантаження скриптів і стилів
-     */
-    public static function enqueue_scripts() {
-        wp_enqueue_script('lapki-main', LAPKI_PLUGIN_URL . 'js/lapki-main.js', ['jquery'], self::VERSION, true);
-        wp_enqueue_style('lapki-main', LAPKI_PLUGIN_URL . 'css/lapki-main.css', [], self::VERSION);
-        
-        // Локалізація для AJAX
-        wp_localize_script('lapki-main', 'lapki_ajax', [
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('lapki_nonce')
-        ]);
-    }
-    
-    /**
      * Активація плагіна
      */
     public static function activate()
     {
         self::create_media_directories();
+        Lapki_Migrations::install();
+        update_option(Lapki_Migrations::DB_VERSION_OPTION, Lapki_Migrations::DB_VERSION);
+        flush_rewrite_rules();
     }
     
     /**
@@ -133,185 +125,7 @@ class Lapki_Main {
     public static function deactivate() {
         flush_rewrite_rules();
     }
-    
-    // =======================================================
-    // РОБОТА З АТРИБУТАМИ
-    // =======================================================
 
-/**
- * 🔥 Отримати відображуване значення атрибута (З КЕШУВАННЯМ!)
- */
-public static function get_attribute_display($entity, $entity_type, $attr_name, $attr_value, $lang = 'uk') {
-    // СПОЧАТКУ СПРОБУВАТИ КЕШ
-    if (class_exists('Lapki_Cache')) {
-        $cached_value = Lapki_Cache::get_attribute_display_fast($entity, $entity_type, $attr_name, $attr_value, $lang);
-        if ($cached_value !== null) {
-            return $cached_value;
-        }
-    }
-    
-    // Fallback на базу даних якщо немає в кеші
-    global $wpdb;
-    
-    $table_name = $wpdb->prefix . 'lapki_attributes';
-    
-    $result = $wpdb->get_var($wpdb->prepare("
-        SELECT attr_display 
-        FROM {$table_name}
-        WHERE entity = %s AND entity_type = %s AND attr_name = %s AND attr_value = %s AND lang = %s
-    ", $entity, $entity_type, $attr_name, $attr_value, $lang));
-    
-    return $result;
-}
-/**
- * 🔥 Отримати опції для селекта з атрибутів (З КЕШУВАННЯМ!)
- */
-public static function get_attribute_options($entity, $entity_type, $attr_name, $lang = 'uk') {
-    // СПОЧАТКУ СПРОБУВАТИ КЕШ
-    if (class_exists('Lapki_Cache')) {
-        $cached_options = Lapki_Cache::get_attribute_options_fast($entity, $entity_type, $attr_name, $lang);
-        if (!empty($cached_options)) {
-            return $cached_options;
-        }
-    }
-    
-    // Fallback на базу даних якщо немає в кеші
-    global $wpdb;
-    
-    $table_name = $wpdb->prefix . 'lapki_attributes';
-    
-    $results = $wpdb->get_results($wpdb->prepare("
-        SELECT attr_value, attr_display 
-        FROM {$table_name}
-        WHERE entity = %s AND entity_type = %s AND attr_name = %s AND lang = %s
-        ORDER BY attr_display
-    ", $entity, $entity_type, $attr_name, $lang));
-    
-    $options = [];
-    foreach ($results as $row) {
-        $options[$row->attr_value] = $row->attr_display;
-    }
-    return $options;
-}
-
-/**
- * 🔥 Додати новий атрибут (З ІНВАЛІДАЦІЄЮ КЕШУ!)
- */
-public static function add_attribute($entity, $entity_type, $attr_name, $attr_value, $attr_display, $lang = 'uk') {
-    global $wpdb;
-    
-    $table_name = $wpdb->prefix . 'lapki_attributes';
-    
-    $result = $wpdb->insert(
-        $table_name,
-        [
-            'entity' => $entity,
-            'entity_type' => $entity_type,
-            'attr_name' => $attr_name,
-            'attr_value' => $attr_value,
-            'attr_display' => $attr_display,
-            'lang' => $lang
-        ],
-        ['%s', '%s', '%s', '%s', '%s', '%s']
-    );
-    
-    // ІНВАЛІДУВАТИ КЕШ АТРИБУТІВ
-    if ($result && class_exists('Lapki_Cache')) {
-        Lapki_Cache::invalidate_attributes();
-        // Перезавантажити кеш
-        Lapki_Cache::warm_up_attributes();
-    }
-    
-    return $result;
-}
-
-/**
- * Отримати типи тварин
- */
-public static function get_animal_types($lang = 'uk') {
-    return self::get_attribute_options('animal', 'type', 'species', $lang);
-}
-
-    /**
-     * Отримати всі атрибути для сутності
-     */
-    public static function get_entity_attributes($entity, $entity_type, $lang = 'uk') {
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'lapki_attributes';
-        
-        $results = $wpdb->get_results($wpdb->prepare("
-            SELECT attr_name, attr_value, attr_display 
-            FROM {$table_name}
-            WHERE entity = %s AND entity_type = %s AND lang = %s
-            ORDER BY attr_name, attr_display
-        ", $entity, $entity_type, $lang));
-        
-        $attributes = [];
-        foreach ($results as $row) {
-            $attributes[$row->attr_name][$row->attr_value] = $row->attr_display;
-        }
-        return $attributes;
-    }
-    
-    // =======================================================
-    // ДОПОМІЖНІ МЕТОДИ
-    // =======================================================
-    
-    /**
-     * Отримати поточну мову
-     */
-    public static function get_current_lang() {
-        // Можна інтегрувати з WPML, Polylang тощо
-        return defined('ICL_LANGUAGE_CODE') ? ICL_LANGUAGE_CODE : 'uk';
-    }
-    
-    /**
-     * Перевірка валідності мови
-     */
-    public static function is_valid_lang($lang) {
-        return in_array($lang, self::SUPPORTED_LANGS);
-    }
-    
-    /**
-     * AJAX пошук тваринок
-     */
-    public static function ajax_search_pets() {
-        check_ajax_referer('lapki_nonce', 'nonce');
-        
-        $search_params = [
-            'species' => sanitize_text_field($_POST['species'] ?? ''),
-            'location' => sanitize_text_field($_POST['location'] ?? ''),
-            'size' => sanitize_text_field($_POST['size'] ?? ''),
-            'gender' => sanitize_text_field($_POST['gender'] ?? ''),
-            'age' => sanitize_text_field($_POST['age'] ?? ''),
-        ];
-        
-        // TODO: Реалізувати пошук через API або локальну базу
-        $results = self::search_pets($search_params);
-        
-        wp_send_json_success([
-            'pets' => $results,
-            'count' => count($results)
-        ]);
-    }
-    public static function init_cache() {
-        if (class_exists('Lapki_Cache')) {
-            // Перевірити чи є кеш атрибутів, якщо ні - завантажити
-            $cached_attrs = Lapki_Cache::get('all_attributes', Lapki_Cache::PREFIX_ATTRIBUTES);
-            if ($cached_attrs === false) {
-                Lapki_Cache::warm_up_attributes();
-                
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    error_log('Lapki: Attributes cache warmed up on init');
-                }
-            } else {
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    error_log('Lapki: Attributes cache already exists');
-                }
-            }
-        }
-    }
     // =======================================================
     // РОБОТА З МЕДІА ФАЙЛАМИ
     // =======================================================
@@ -536,45 +350,7 @@ public static function get_animal_types($lang = 'uk') {
         return $deleted;
     }
     
-    /**
-     * Отримати інформацію про зображення
-     * 
-     * @param string $filename Назва файлу
-     * @return array|false Інформація про зображення
-     */
-    public static function get_image_info($filename) {
-        $filepath = self::get_image_path($filename);
-        
-        if (!file_exists($filepath)) {
-            return false;
-        }
-        
-        $image_info = getimagesize($filepath);
-        if ($image_info === false) {
-            return false;
-        }
-        
-        return [
-            'filename' => $filename,
-            'filepath' => $filepath,
-            'url' => self::get_image_url($filename),
-            'thumbnail_url' => self::get_image_url($filename, true),
-            'width' => $image_info[0],
-            'height' => $image_info[1],
-            'mime_type' => $image_info['mime'],
-            'size' => filesize($filepath),
-            'has_thumbnail' => self::image_exists($filename, true)
-        ];
-    }
 }
 
 // Ініціалізація плагіна
 Lapki_Main::init();
-
-// Глобальна функція для доступу до плагіна
-if (!function_exists('lapki')) {
-    function lapki() {
-        return Lapki_Main::class;
-    }
-}
-?>

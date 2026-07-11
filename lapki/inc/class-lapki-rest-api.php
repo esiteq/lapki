@@ -27,10 +27,10 @@ class Lapki_REST_API {
             [
                 'methods' => WP_REST_Server::CREATABLE,
                 'callback' => [__CLASS__, 'create_animal'],
-                'permission_callback' => '__return_true' // Відключено для тестування
+                'permission_callback' => [__CLASS__, 'check_manage_animals_permission']
             ]
         ]);
-        
+
         register_rest_route($namespace, '/animals/(?P<id>\d+)', [
             [
                 'methods' => WP_REST_Server::READABLE,
@@ -47,12 +47,12 @@ class Lapki_REST_API {
             [
                 'methods' => WP_REST_Server::EDITABLE,
                 'callback' => [__CLASS__, 'update_animal'],
-                'permission_callback' => '__return_true' // Відключено для тестування
+                'permission_callback' => [__CLASS__, 'check_animal_owner_permission']
             ],
             [
                 'methods' => WP_REST_Server::DELETABLE,
                 'callback' => [__CLASS__, 'delete_animal'],
-                'permission_callback' => '__return_true' // Відключено для тестування
+                'permission_callback' => [__CLASS__, 'check_animal_owner_permission']
             ]
         ]);
         
@@ -69,7 +69,22 @@ class Lapki_REST_API {
                 ]
             ]
         ]);
-        
+
+        // Явний маршрут /types/all — глобальні атрибути (age, gender, size, coat, status)
+        // Реєструємо ДО /types/{type}, щоб 'all' не потрапляло під загальний маршрут
+        register_rest_route($namespace, '/types/all', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [__CLASS__, 'get_all_type_attributes'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'lang' => [
+                    'type' => 'string',
+                    'default' => 'uk',
+                    'enum' => ['uk', 'en']
+                ]
+            ]
+        ]);
+
         register_rest_route($namespace, '/types/(?P<type>[a-zA-Z0-9_-]+)', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [__CLASS__, 'get_type_details'],
@@ -104,6 +119,23 @@ class Lapki_REST_API {
             ]
         ]);
         
+        // LOCATIONS ROUTE — підказки міст для автодоповнення пошуку
+        register_rest_route($namespace, '/locations', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [__CLASS__, 'get_locations'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'query' => [
+                    'type' => 'string',
+                    'default' => ''
+                ],
+                'limit' => [
+                    'type' => 'integer',
+                    'default' => 10
+                ]
+            ]
+        ]);
+
         // ORGANIZATIONS ROUTES
         register_rest_route($namespace, '/organizations', [
             [
@@ -115,7 +147,7 @@ class Lapki_REST_API {
             [
                 'methods' => WP_REST_Server::CREATABLE,
                 'callback' => [__CLASS__, 'create_organization'],
-                'permission_callback' => '__return_true' // Відключено для тестування
+                'permission_callback' => [__CLASS__, 'check_manage_organizations_permission']
             ]
         ]);
         
@@ -131,6 +163,16 @@ class Lapki_REST_API {
                         'sanitize_callback' => 'absint'
                     ]
                 ]
+            ],
+            [
+                'methods' => WP_REST_Server::EDITABLE,
+                'callback' => [__CLASS__, 'update_organization'],
+                'permission_callback' => [__CLASS__, 'check_organization_owner_permission']
+            ],
+            [
+                'methods' => WP_REST_Server::DELETABLE,
+                'callback' => [__CLASS__, 'delete_organization'],
+                'permission_callback' => [__CLASS__, 'check_organization_owner_permission']
             ]
         ]);
         
@@ -139,6 +181,80 @@ class Lapki_REST_API {
             'methods' => WP_REST_Server::READABLE,
             'callback' => [__CLASS__, 'get_stats'],
             'permission_callback' => '__return_true'
+        ]);
+
+        // MEDIA ROUTES
+        register_rest_route($namespace, '/animals/(?P<animal_id>\d+)/media', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [__CLASS__, 'upload_animal_media'],
+            'permission_callback' => [__CLASS__, 'check_animal_media_permission']
+        ]);
+
+        register_rest_route($namespace, '/media/(?P<id>\d+)', [
+            'methods' => WP_REST_Server::DELETABLE,
+            'callback' => [__CLASS__, 'delete_media'],
+            'permission_callback' => [__CLASS__, 'check_media_owner_permission']
+        ]);
+
+        register_rest_route($namespace, '/media/(?P<id>\d+)/primary', [
+            'methods' => WP_REST_Server::EDITABLE,
+            'callback' => [__CLASS__, 'set_primary_media'],
+            'permission_callback' => [__CLASS__, 'check_media_owner_permission']
+        ]);
+
+        // ATTRIBUTES ROUTES (глобальний довідник — тільки адмін)
+        register_rest_route($namespace, '/attributes', [
+            [
+                'methods' => WP_REST_Server::READABLE,
+                'callback' => [__CLASS__, 'get_attributes'],
+                'permission_callback' => '__return_true',
+            ],
+            [
+                'methods' => WP_REST_Server::CREATABLE,
+                'callback' => [__CLASS__, 'create_attribute'],
+                'permission_callback' => [__CLASS__, 'check_manage_attributes_permission'],
+            ]
+        ]);
+
+        register_rest_route($namespace, '/attributes/(?P<id>\d+)', [
+            [
+                'methods' => WP_REST_Server::EDITABLE,
+                'callback' => [__CLASS__, 'update_attribute'],
+                'permission_callback' => [__CLASS__, 'check_manage_attributes_permission'],
+            ],
+            [
+                'methods' => WP_REST_Server::DELETABLE,
+                'callback' => [__CLASS__, 'delete_attribute'],
+                'permission_callback' => [__CLASS__, 'check_manage_attributes_permission'],
+            ]
+        ]);
+
+        // APPLICATIONS ROUTES (заявки на усиновлення)
+        register_rest_route($namespace, '/applications', [
+            [
+                'methods' => WP_REST_Server::READABLE,
+                'callback' => [__CLASS__, 'get_applications'],
+                'permission_callback' => [__CLASS__, 'check_manage_animals_permission'],
+            ],
+            [
+                'methods' => WP_REST_Server::CREATABLE,
+                'callback' => [__CLASS__, 'create_application'],
+                // Публічна форма подачі заявки — як контактна форма, без авторизації
+                'permission_callback' => '__return_true',
+            ]
+        ]);
+
+        register_rest_route($namespace, '/applications/(?P<id>\d+)', [
+            'methods' => WP_REST_Server::EDITABLE,
+            'callback' => [__CLASS__, 'update_application'],
+            'permission_callback' => [__CLASS__, 'check_application_owner_permission'],
+        ]);
+
+        // SIGNUP ROUTE (публічна реєстрація нового користувача)
+        register_rest_route($namespace, '/signup', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [__CLASS__, 'signup_user'],
+            'permission_callback' => '__return_true',
         ]);
     }
     
@@ -157,9 +273,9 @@ class Lapki_REST_API {
             'age' => $request->get_param('age'),
             'gender' => $request->get_param('gender'),
             'size' => $request->get_param('size'),
-            'status' => $request->get_param('status') ?: 'adoptable',
+            'status' => $request->get_param('status') ?: '',
             'location' => $request->get_param('location'),
-            'distance' => $request->get_param('distance') ?: 50,
+            'distance' => $request->get_param('distance') ?: (int) get_option('lapki_default_distance', 50),
             'latitude' => $request->get_param('latitude'),
             'longitude' => $request->get_param('longitude'),
             'good_with_children' => self::parse_boolean($request->get_param('good_with_children')),
@@ -168,14 +284,16 @@ class Lapki_REST_API {
             'spayed_neutered' => self::parse_boolean($request->get_param('spayed_neutered')),
             'special_needs' => self::parse_boolean($request->get_param('special_needs')),
             'organization_id' => $request->get_param('organization_id'),
-            'limit' => min($request->get_param('limit') ?: 20, 100), // Максимум 100
+            'limit' => min($request->get_param('limit') ?: (int) get_option('lapki_default_page_size', 20), 100), // Максимум 100
             'offset' => $request->get_param('offset') ?: 0,
             'order_by' => $request->get_param('order_by') ?: 'published_at',
-            'order' => $request->get_param('order') ?: 'DESC'
+            'order' => $request->get_param('order') ?: 'DESC',
+            'search' => $request->get_param('search') ?: ''
         ];
-        
+
         $animals = Lapki_Animal::search($params);
-        
+        $total_count = Lapki_Animal::count($params);
+
         if (empty($animals)) {
             return new WP_REST_Response([
                 'data' => [],
@@ -187,12 +305,6 @@ class Lapki_REST_API {
                 ]
             ], 200);
         }
-        
-        // Підрахунок загальної кількості для пагінації
-        $total_params = $params;
-        $total_params['limit'] = 999999;
-        $total_params['offset'] = 0;
-        $total_count = count(Lapki_Animal::search($total_params));
         
         $current_page = floor($params['offset'] / $params['limit']) + 1;
         $total_pages = ceil($total_count / $params['limit']);
@@ -214,11 +326,19 @@ class Lapki_REST_API {
     public static function get_animal($request) {
         $id = $request->get_param('id');
         $animal = Lapki_Animal::get($id);
-        
+
         if (!$animal) {
-            return new WP_Error('animal_not_found', 'Тварину не знайдено', ['status' => 404]);
+            return new WP_Error('animal_not_found', __('Тварину не знайдено', 'lapki'), ['status' => 404]);
         }
-        
+
+        // Перевірити чи є головне фото, якщо ні - встановити перше фото головним
+        if (!empty($animal['media'])) {
+            if (Lapki_Media::ensure_primary('animal', $id)) {
+                // Перезавантажити дані тварини щоб відобразити оновлення
+                $animal = Lapki_Animal::get($id);
+            }
+        }
+
         return new WP_REST_Response($animal, 200);
     }
     
@@ -227,24 +347,29 @@ class Lapki_REST_API {
      */
     public static function create_animal($request) {
         $data = $request->get_json_params();
-        
+
         // Базова валідація
-        $required_fields = ['organization_id', 'name', 'type', 'species', 'age', 'gender', 'size'];
+        $required_fields = ['organization_id', 'name', 'type', 'age', 'gender', 'size'];
         foreach ($required_fields as $field) {
             if (empty($data[$field])) {
-                return new WP_Error('missing_field', "Поле '{$field}' є обов'язковим", ['status' => 400]);
+                return new WP_Error('missing_field', sprintf(__("Поле '%s' є обов'язковим", 'lapki'), $field), ['status' => 400]);
             }
         }
-        
+
+        // Автоматично заповнити species з type (це одне і те ж)
+        if (empty($data['species'])) {
+            $data['species'] = $data['type'];
+        }
+
         // Для тестування - додамо дефолтну організацію якщо не вказана
         if (empty($data['organization_id'])) {
             $data['organization_id'] = 1;
         }
-        
+
         $animal_id = Lapki_Animal::create($data);
         
         if (!$animal_id) {
-            return new WP_Error('creation_failed', 'Не вдалося створити тварину', ['status' => 500]);
+            return new WP_Error('creation_failed', __('Не вдалося створити тварину', 'lapki'), ['status' => 500]);
         }
         
         $animal = Lapki_Animal::get($animal_id);
@@ -257,16 +382,21 @@ class Lapki_REST_API {
     public static function update_animal($request) {
         $id = $request->get_param('id');
         $data = $request->get_json_params();
-        
+
         $existing = Lapki_Animal::get($id);
         if (!$existing) {
-            return new WP_Error('animal_not_found', 'Тварину не знайдено', ['status' => 404]);
+            return new WP_Error('animal_not_found', __('Тварину не знайдено', 'lapki'), ['status' => 404]);
         }
-        
+
+        // Автоматично заповнити species з type (це одне і те ж)
+        if (!empty($data['type']) && empty($data['species'])) {
+            $data['species'] = $data['type'];
+        }
+
         $updated = Lapki_Animal::update($id, $data);
         
         if ($updated === false) {
-            return new WP_Error('update_failed', 'Не вдалося оновити тварину', ['status' => 500]);
+            return new WP_Error('update_failed', __('Не вдалося оновити тварину', 'lapki'), ['status' => 500]);
         }
         
         $animal = Lapki_Animal::get($id);
@@ -281,13 +411,13 @@ class Lapki_REST_API {
         
         $existing = Lapki_Animal::get($id);
         if (!$existing) {
-            return new WP_Error('animal_not_found', 'Тварину не знайдено', ['status' => 404]);
+            return new WP_Error('animal_not_found', __('Тварину не знайдено', 'lapki'), ['status' => 404]);
         }
         
         $deleted = Lapki_Animal::delete($id);
         
         if (!$deleted) {
-            return new WP_Error('delete_failed', 'Не вдалося видалити тварину', ['status' => 500]);
+            return new WP_Error('delete_failed', __('Не вдалося видалити тварину', 'lapki'), ['status' => 500]);
         }
         
         return new WP_REST_Response(['message' => 'Тварину успішно видалено'], 200);
@@ -297,6 +427,18 @@ class Lapki_REST_API {
     // ANIMAL TYPES ENDPOINTS
     // =======================================
     
+    /**
+     * GET /wp-json/lapki/v1/types/all
+     */
+    public static function get_all_type_attributes($request) {
+        $lang = $request->get_param('lang') ?: 'uk';
+        $attributes = Lapki_Attributes::get_global_attributes($lang);
+
+        return new WP_REST_Response([
+            'attributes' => $attributes
+        ], 200);
+    }
+
     /**
      * GET /wp-json/lapki/v1/types
      */
@@ -319,7 +461,7 @@ class Lapki_REST_API {
         $attributes = Lapki_Attributes::get_type_attributes($type, $lang);
         
         if (empty($attributes)) {
-            return new WP_Error('type_not_found', 'Тип тварини не знайдено', ['status' => 404]);
+            return new WP_Error('type_not_found', __('Тип тварини не знайдено', 'lapki'), ['status' => 404]);
         }
         
         return new WP_REST_Response([
@@ -343,6 +485,22 @@ class Lapki_REST_API {
         ], 200);
     }
     
+    /**
+     * GET /wp-json/lapki/v1/locations — підказки міст для автодоповнення
+     */
+    public static function get_locations($request) {
+        $query = trim((string) $request->get_param('query'));
+        $limit = min((int) ($request->get_param('limit') ?: 10), 25);
+
+        if (strlen($query) < 2) {
+            return new WP_REST_Response(['data' => []], 200);
+        }
+
+        $locations = Lapki_Animal::search_locations($query, $limit);
+
+        return new WP_REST_Response(['data' => $locations], 200);
+    }
+
     // =======================================
     // ORGANIZATIONS ENDPOINTS
     // =======================================
@@ -381,7 +539,7 @@ class Lapki_REST_API {
         $organization = Lapki_Organization::get($id);
         
         if (!$organization) {
-            return new WP_Error('organization_not_found', 'Організацію не знайдено', ['status' => 404]);
+            return new WP_Error('organization_not_found', __('Організацію не знайдено', 'lapki'), ['status' => 404]);
         }
         
         return new WP_REST_Response($organization, 200);
@@ -397,25 +555,78 @@ class Lapki_REST_API {
         $required_fields = ['name', 'type'];
         foreach ($required_fields as $field) {
             if (empty($data[$field])) {
-                return new WP_Error('missing_field', "Поле '{$field}' є обов'язковим", ['status' => 400]);
+                return new WP_Error('missing_field', sprintf(__("Поле '%s' є обов'язковим", 'lapki'), $field), ['status' => 400]);
             }
         }
         
-        // Для тестування - додамо дефолтного користувача
         if (empty($data['wp_user_id'])) {
-            $data['wp_user_id'] = 1;
+            $data['wp_user_id'] = get_current_user_id();
         }
         
         $org_id = Lapki_Organization::create($data);
         
         if (!$org_id) {
-            return new WP_Error('creation_failed', 'Не вдалося створити організацію', ['status' => 500]);
+            return new WP_Error('creation_failed', __('Не вдалося створити організацію', 'lapki'), ['status' => 500]);
         }
         
         $organization = Lapki_Organization::get($org_id);
         return new WP_REST_Response($organization, 201);
     }
-    
+
+    /**
+     * PUT /wp-json/lapki/v1/organizations/{id}
+     */
+    public static function update_organization($request) {
+        $id = $request->get_param('id');
+        $data = $request->get_json_params();
+
+        $existing = Lapki_Organization::get($id);
+        if (!$existing) {
+            return new WP_Error('organization_not_found', __('Організацію не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        $updated = Lapki_Organization::update($id, $data);
+        if (!$updated) {
+            return new WP_Error('update_failed', __('Не вдалося оновити організацію', 'lapki'), ['status' => 500]);
+        }
+
+        return new WP_REST_Response(Lapki_Organization::get($id), 200);
+    }
+
+    /**
+     * DELETE /wp-json/lapki/v1/organizations/{id}
+     */
+    public static function delete_organization($request) {
+        $id = $request->get_param('id');
+
+        $existing = Lapki_Organization::get($id);
+        if (!$existing) {
+            return new WP_Error('organization_not_found', __('Організацію не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        $deleted = Lapki_Organization::delete($id);
+        if (!$deleted) {
+            return new WP_Error('delete_failed', __('Не вдалося видалити організацію', 'lapki'), ['status' => 500]);
+        }
+
+        return new WP_REST_Response(['message' => 'Організацію успішно видалено'], 200);
+    }
+
+    /**
+     * Редагування/видалення організації: власник (або адмін)
+     */
+    public static function check_organization_owner_permission($request) {
+        if (!current_user_can(Lapki_Roles::CAP_MANAGE_ORGANIZATIONS)) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        return Lapki_Roles::user_owns_organization($request->get_param('id'), get_current_user_id());
+    }
+
     // =======================================
     // STATISTICS ENDPOINT
     // =======================================
@@ -533,6 +744,10 @@ class Lapki_REST_API {
                 'enum' => ['ASC', 'DESC'],
                 'default' => 'DESC',
                 'description' => 'Порядок сортування'
+            ],
+            'search' => [
+                'type' => 'string',
+                'description' => 'Пошук за кличкою тварини'
             ]
         ];
     }
@@ -588,26 +803,549 @@ class Lapki_REST_API {
     
     // =======================================
     // PERMISSION CALLBACKS
+    //
+    // Читання (GET) лишається публічним — це основна функція платформи
+    // (публічний пошук тварин, як на petfinder.com). Авторизація потрібна
+    // тільки для операцій, що змінюють дані.
     // =======================================
-    
-    public static function check_create_permission($request) {
-        return current_user_can('edit_posts');
+
+    /**
+     * Створення тварини: потрібна capability lapki_manage_animals
+     */
+    public static function check_manage_animals_permission($request) {
+        return current_user_can(Lapki_Roles::CAP_MANAGE_ANIMALS);
     }
-    
-    public static function check_edit_permission($request) {
-        $id = $request->get_param('id');
-        
-        // Перевіряємо чи користувач може редагувати цю тварину/організацію
-        if (current_user_can('edit_others_posts')) {
+
+    /**
+     * Редагування/видалення тварини: capability + власник організації (або адмін)
+     */
+    public static function check_animal_owner_permission($request) {
+        if (!current_user_can(Lapki_Roles::CAP_MANAGE_ANIMALS)) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
             return true;
         }
-        
-        // Тут можна додати логіку перевірки власності
-        return current_user_can('edit_posts');
+
+        $animal = Lapki_Animal::get($request->get_param('id'));
+        if (!$animal) {
+            // Дати колбеку самому повернути 404
+            return true;
+        }
+
+        return Lapki_Roles::user_owns_organization($animal['organization_id'], get_current_user_id());
     }
-    
-    public static function check_delete_permission($request) {
-        return current_user_can('delete_posts');
+
+    /**
+     * Завантаження фото тварини: capability + власник організації (або адмін)
+     */
+    public static function check_animal_media_permission($request) {
+        if (!current_user_can(Lapki_Roles::CAP_MANAGE_ANIMALS)) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $animal = Lapki_Animal::get($request->get_param('animal_id'));
+        if (!$animal) {
+            return true;
+        }
+
+        return Lapki_Roles::user_owns_organization($animal['organization_id'], get_current_user_id());
+    }
+
+    /**
+     * Видалення/зміна головного медіа: capability + власник організації тварини (або адмін)
+     */
+    public static function check_media_owner_permission($request) {
+        if (!current_user_can(Lapki_Roles::CAP_MANAGE_ANIMALS)) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $media = Lapki_Media::get($request->get_param('id'));
+        if (!$media) {
+            return true;
+        }
+
+        if ($media['entity_type'] === 'animal') {
+            $animal = Lapki_Animal::get($media['entity_id']);
+            if ($animal) {
+                return Lapki_Roles::user_owns_organization($animal['organization_id'], get_current_user_id());
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Створення організації: потрібна capability lapki_manage_organizations
+     */
+    public static function check_manage_organizations_permission($request) {
+        return current_user_can(Lapki_Roles::CAP_MANAGE_ORGANIZATIONS);
+    }
+
+    /**
+     * Керування глобальним довідником атрибутів: тільки адміністратор
+     */
+    public static function check_manage_attributes_permission($request) {
+        return current_user_can(Lapki_Roles::CAP_MANAGE_ATTRIBUTES);
+    }
+
+    // =======================================
+    // MEDIA ENDPOINTS
+    // =======================================
+
+    /**
+     * POST /wp-json/lapki/v1/animals/{animal_id}/media
+     */
+    public static function upload_animal_media($request) {
+        $animal_id = $request->get_param('animal_id');
+
+        // Перевірити чи існує тварина
+        $animal = Lapki_Animal::get($animal_id);
+        if (!$animal) {
+            return new WP_Error('animal_not_found', __('Тварину не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        // Перевірити чи є файл
+        $files = $request->get_file_params();
+        if (empty($files['file'])) {
+            return new WP_Error('no_file', __('Файл не надіслано', 'lapki'), ['status' => 400]);
+        }
+
+        $file = $files['file'];
+
+        // Валідація розміру (макс 10MB)
+        if ($file['size'] > 10 * 1024 * 1024) {
+            return new WP_Error('file_too_large', __('Файл занадто великий. Максимум 10MB', 'lapki'), ['status' => 400]);
+        }
+
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+        $is_primary = !Lapki_Media::has_primary('animal', $animal_id) ? 1 : 0;
+        $sort_order = Lapki_Media::get_next_sort_order('animal', $animal_id);
+
+        $result = Lapki_Media::upload_image($file, 'animal', $animal_id, $animal['name'] ?? '', $is_primary, $sort_order);
+
+        if (is_wp_error($result)) {
+            $server_side_errors = ['move_error', 'db_error'];
+            $status = in_array($result->get_error_code(), $server_side_errors, true) ? 500 : 400;
+            return new WP_Error($result->get_error_code(), $result->get_error_message(), ['status' => $status]);
+        }
+
+        // Повернути дані медіа
+        $media = Lapki_Media::get($result['media_id']);
+
+        return new WP_REST_Response($media, 201);
+    }
+
+    /**
+     * DELETE /wp-json/lapki/v1/media/{id}
+     */
+    public static function delete_media($request) {
+        $id = $request->get_param('id');
+
+        $media = Lapki_Media::get($id);
+        if (!$media) {
+            return new WP_Error('media_not_found', __('Медіа не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        $was_primary = $media['is_primary'];
+        $entity_type = $media['entity_type'];
+        $entity_id = $media['entity_id'];
+
+        // Видалити з бази і файли (Lapki_Media::delete видаляє і файли і запис БД)
+        $deleted = Lapki_Media::delete($id);
+
+        if (!$deleted) {
+            return new WP_Error('delete_failed', __('Не вдалося видалити медіа', 'lapki'), ['status' => 500]);
+        }
+
+        // Якщо видалене фото було головним - встановити наступне головним
+        if ($was_primary) {
+            Lapki_Media::ensure_primary($entity_type, $entity_id);
+        }
+
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    // =======================================
+    // ATTRIBUTES ENDPOINTS
+    // =======================================
+
+    /**
+     * GET /wp-json/lapki/v1/attributes
+     */
+    public static function get_attributes($request) {
+        $filters = [
+            'lang'        => $request->get_param('lang') ?: '',
+            'entity'      => $request->get_param('entity') ?: '',
+            'entity_type' => $request->get_param('entity_type') ?: '',
+            'attr_name'   => $request->get_param('attr_name') ?: '',
+            'search'      => $request->get_param('search') ?: '',
+            'limit'       => min($request->get_param('limit') ?: 50, 200),
+            'offset'      => $request->get_param('offset') ?: 0,
+        ];
+
+        $data  = Lapki_Attributes::get_all($filters);
+        $total = Lapki_Attributes::count($filters);
+
+        return new WP_REST_Response([
+            'data' => $data,
+            'pagination' => [
+                'total'        => $total,
+                'pages'        => (int) ceil($total / $filters['limit']),
+                'current_page' => (int) floor($filters['offset'] / $filters['limit']) + 1,
+                'per_page'     => $filters['limit'],
+            ]
+        ], 200);
+    }
+
+    /**
+     * POST /wp-json/lapki/v1/attributes
+     */
+    public static function create_attribute($request) {
+        $data = [
+            'entity'       => sanitize_text_field($request->get_param('entity')),
+            'entity_type'  => sanitize_text_field($request->get_param('entity_type')),
+            'attr_name'    => sanitize_text_field($request->get_param('attr_name')),
+            'attr_value'   => sanitize_text_field($request->get_param('attr_value')),
+            'attr_display' => sanitize_text_field($request->get_param('attr_display')),
+            'lang'         => sanitize_text_field($request->get_param('lang')),
+        ];
+
+        foreach ($data as $key => $val) {
+            if (empty($val)) {
+                return new WP_Error('missing_field', sprintf(__("Поле '%s' обов'язкове", 'lapki'), $key), ['status' => 400]);
+            }
+        }
+
+        $id = Lapki_Attributes::create($data);
+        if (!$id) {
+            return new WP_Error('create_failed', __('Помилка створення атрибуту', 'lapki'), ['status' => 500]);
+        }
+
+        return new WP_REST_Response(Lapki_Attributes::get($id), 201);
+    }
+
+    /**
+     * PUT /wp-json/lapki/v1/attributes/{id}
+     */
+    public static function update_attribute($request) {
+        $id   = $request->get_param('id');
+        $attr = Lapki_Attributes::get($id);
+
+        if (!$attr) {
+            return new WP_Error('not_found', __('Атрибут не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        $data = [];
+        foreach (['entity', 'entity_type', 'attr_name', 'attr_value', 'attr_display', 'lang'] as $field) {
+            $val = $request->get_param($field);
+            if ($val !== null) {
+                $data[$field] = sanitize_text_field($val);
+            }
+        }
+
+        Lapki_Attributes::update($id, $data);
+        return new WP_REST_Response(Lapki_Attributes::get($id), 200);
+    }
+
+    /**
+     * DELETE /wp-json/lapki/v1/attributes/{id}
+     */
+    public static function delete_attribute($request) {
+        $id   = $request->get_param('id');
+        $attr = Lapki_Attributes::get($id);
+
+        if (!$attr) {
+            return new WP_Error('not_found', __('Атрибут не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        Lapki_Attributes::delete($id);
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    /**
+     * PUT /wp-json/lapki/v1/media/{id}/primary
+     */
+    public static function set_primary_media($request) {
+        $id = $request->get_param('id');
+
+        $media = Lapki_Media::get($id);
+        if (!$media) {
+            return new WP_Error('media_not_found', __('Медіа не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        // Встановити медіа головним через API (автоматично знімає is_primary з інших)
+        $result = Lapki_Media::set_primary($id);
+
+        if (!$result) {
+            return new WP_Error('update_failed', __('Не вдалося встановити головне фото', 'lapki'), ['status' => 500]);
+        }
+
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    // =======================================
+    // APPLICATIONS ENDPOINTS (заявки на усиновлення)
+    // =======================================
+
+    /**
+     * GET /wp-json/lapki/v1/applications
+     * Адмін бачить усі (за organization_id), власник організації — тільки свої
+     */
+    public static function get_applications($request) {
+        $organization_id = absint($request->get_param('organization_id'));
+
+        if (!current_user_can('manage_options')) {
+            $orgs = Lapki_Organization::get_by_wp_user_id(get_current_user_id());
+            if (empty($orgs)) {
+                return new WP_REST_Response(['data' => []], 200);
+            }
+            $organization_id = (int) $orgs[0]['id'];
+        }
+
+        if (empty($organization_id)) {
+            return new WP_Error('missing_param', __("Параметр 'organization_id' обов'язковий", 'lapki'), ['status' => 400]);
+        }
+
+        $applications = Lapki_Application::get_by_organization($organization_id, $request->get_param('status') ?: '');
+
+        return new WP_REST_Response(['data' => $applications], 200);
+    }
+
+    /**
+     * POST /wp-json/lapki/v1/applications
+     * Публічна форма подачі заявки на усиновлення (без авторизації)
+     */
+    public static function create_application($request) {
+        $animal_id = absint($request->get_param('animal_id'));
+        $animal = Lapki_Animal::get($animal_id);
+
+        if (!$animal) {
+            return new WP_Error('animal_not_found', __('Тварину не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        $applicant_name = sanitize_text_field($request->get_param('applicant_name'));
+        $applicant_email = sanitize_email($request->get_param('applicant_email'));
+
+        if (empty($applicant_name) || empty($applicant_email) || !is_email($applicant_email)) {
+            return new WP_Error('invalid_data', "Вкажіть ім'я та коректний email", ['status' => 400]);
+        }
+
+        $application_id = Lapki_Application::create([
+            'animal_id' => $animal_id,
+            'organization_id' => $animal['organization_id'],
+            'applicant_name' => $applicant_name,
+            'applicant_email' => $applicant_email,
+            'applicant_phone' => sanitize_text_field($request->get_param('applicant_phone')),
+            'message' => sanitize_textarea_field($request->get_param('message')),
+        ]);
+
+        if (!$application_id) {
+            return new WP_Error('creation_failed', __('Не вдалося надіслати заявку', 'lapki'), ['status' => 500]);
+        }
+
+        self::send_application_emails($application_id, $animal);
+
+        return new WP_REST_Response(['success' => true, 'id' => $application_id], 201);
+    }
+
+    /**
+     * PUT /wp-json/lapki/v1/applications/{id}
+     * Зміна статусу заявки (new/contacted/approved/rejected)
+     */
+    public static function update_application($request) {
+        $id = $request->get_param('id');
+        $application = Lapki_Application::get($id);
+
+        if (!$application) {
+            return new WP_Error('not_found', __('Заявку не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        $status = sanitize_text_field($request->get_param('status'));
+        $allowed_statuses = [
+            Lapki_Application::STATUS_NEW,
+            Lapki_Application::STATUS_CONTACTED,
+            Lapki_Application::STATUS_APPROVED,
+            Lapki_Application::STATUS_REJECTED,
+        ];
+
+        if (!in_array($status, $allowed_statuses, true)) {
+            return new WP_Error('invalid_status', __('Некоректний статус', 'lapki'), ['status' => 400]);
+        }
+
+        Lapki_Application::update_status($id, $status);
+
+        return new WP_REST_Response(Lapki_Application::get($id), 200);
+    }
+
+    /**
+     * Перегляд/зміна заявки: власник організації тварини (або адмін)
+     */
+    public static function check_application_owner_permission($request) {
+        if (!current_user_can(Lapki_Roles::CAP_MANAGE_ANIMALS)) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $application = Lapki_Application::get($request->get_param('id'));
+        if (!$application) {
+            return true;
+        }
+
+        return Lapki_Roles::user_owns_organization($application['organization_id'], get_current_user_id());
+    }
+
+    // =======================================
+    // SIGNUP ENDPOINT
+    // =======================================
+
+    /**
+     * Типи реєстрації → WP-роль. Притулок/клініка/ветеринар отримують
+     * lapki_shelter_admin (можуть керувати профілем організації), приватна
+     * особа/волонтер — lapki_volunteer (тільки свої тварини).
+     */
+    private static function get_signup_types() {
+        return [
+            'individual' => Lapki_Roles::ROLE_VOLUNTEER,
+            'shelter'    => Lapki_Roles::ROLE_SHELTER_ADMIN,
+            'vet_clinic' => Lapki_Roles::ROLE_SHELTER_ADMIN,
+            'vet'        => Lapki_Roles::ROLE_SHELTER_ADMIN,
+            'volunteer'  => Lapki_Roles::ROLE_VOLUNTEER,
+        ];
+    }
+
+    /**
+     * POST /wp-json/lapki/v1/signup
+     * Публічна реєстрація: приватна особа, притулок, ветклініка, ветеринар, волонтер.
+     * Створює WP-користувача + організацію (тварини/заявки прив'язані до organization_id).
+     */
+    public static function signup_user($request) {
+        $signup_types = self::get_signup_types();
+
+        $user_type = sanitize_key((string) $request->get_param('user_type'));
+        $name = sanitize_text_field((string) $request->get_param('name'));
+        $org_name = sanitize_text_field((string) $request->get_param('organization_name'));
+        $email = sanitize_email((string) $request->get_param('email'));
+        $password = (string) $request->get_param('password');
+        $phone = sanitize_text_field((string) $request->get_param('phone'));
+        $city = sanitize_text_field((string) $request->get_param('city'));
+
+        if (!isset($signup_types[$user_type])) {
+            return new WP_Error('invalid_type', __('Оберіть тип реєстрації', 'lapki'), ['status' => 400]);
+        }
+
+        if (empty($name) || empty($email) || !is_email($email) || strlen($password) < 6) {
+            return new WP_Error('invalid_data', __("Заповніть ім'я, коректний email і пароль (мінімум 6 символів)", 'lapki'), ['status' => 400]);
+        }
+
+        if (email_exists($email)) {
+            return new WP_Error('email_exists', __('Користувач з таким email вже зареєстрований', 'lapki'), ['status' => 409]);
+        }
+
+        $user_id = wp_insert_user([
+            'user_login' => self::generate_unique_username($email),
+            'user_email' => $email,
+            'user_pass' => $password,
+            'display_name' => $name,
+            'role' => $signup_types[$user_type],
+        ]);
+
+        if (is_wp_error($user_id)) {
+            return new WP_Error('user_creation_failed', $user_id->get_error_message(), ['status' => 500]);
+        }
+
+        update_user_meta($user_id, 'lapki_user_type', $user_type);
+        if (!empty($phone)) {
+            update_user_meta($user_id, 'lapki_phone', $phone);
+        }
+
+        $organization_id = Lapki_Organization::create([
+            'wp_user_id' => $user_id,
+            'name' => !empty($org_name) ? $org_name : $name,
+            'type' => $user_type,
+            'email' => $email,
+            'phone' => $phone,
+            'city' => $city,
+        ]);
+
+        wp_set_current_user($user_id);
+        wp_set_auth_cookie($user_id, true);
+
+        return new WP_REST_Response([
+            'success' => true,
+            'user_id' => $user_id,
+            'organization_id' => $organization_id ?: null,
+            'redirect' => home_url('/cabinet/'),
+        ], 201);
+    }
+
+    /**
+     * Унікальний user_login на основі локальної частини email (email@example.com → email, email1, email2…)
+     */
+    private static function generate_unique_username($email) {
+        $base = sanitize_user(current(explode('@', $email)), true);
+        if (empty($base)) {
+            $base = 'user';
+        }
+
+        $username = $base;
+        $i = 1;
+        while (username_exists($username)) {
+            $username = $base . $i;
+            $i++;
+        }
+
+        return $username;
+    }
+
+    /**
+     * Надіслати email-нотифікацію організації та підтвердження заявнику
+     */
+    private static function send_application_emails($application_id, $animal) {
+        $application = Lapki_Application::get($application_id);
+        if (!$application) {
+            return;
+        }
+
+        $organization = Lapki_Organization::get($animal['organization_id']);
+        $org_email = !empty($organization['email'])
+            ? $organization['email']
+            : get_option('lapki_notification_email', get_option('admin_email'));
+
+        $subject_org = sprintf('Нова заявка на усиновлення: %s', $animal['name']);
+        $body_org = sprintf(
+            "Отримано нову заявку на усиновлення тварини \"%s\".\n\nІм'я: %s\nEmail: %s\nТелефон: %s\nПовідомлення: %s\n\nПереглянути заявки: %s",
+            $animal['name'],
+            $application['applicant_name'],
+            $application['applicant_email'],
+            $application['applicant_phone'] ?: '—',
+            $application['message'] ?: '—',
+            admin_url('admin.php?page=lapki-organizations')
+        );
+        wp_mail($org_email, $subject_org, $body_org);
+
+        $subject_applicant = sprintf('Ваша заявка на усиновлення "%s" отримана', $animal['name']);
+        $body_applicant = sprintf(
+            "Вітаємо, %s!\n\nВашу заявку на усиновлення тварини \"%s\" отримано. Організація зв'яжеться з вами найближчим часом.\n\nДякуємо, що вирішили подарувати дім!",
+            $application['applicant_name'],
+            $animal['name']
+        );
+        wp_mail($application['applicant_email'], $subject_applicant, $body_applicant);
     }
 }
 

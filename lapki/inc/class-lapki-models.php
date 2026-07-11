@@ -32,7 +32,10 @@ abstract class Lapki_Model {
  */
 class Lapki_Animal extends Lapki_Model {
     protected static $table_name = 'lapki_animals';
-    
+
+    const LOCATIONS_CACHE_KEY = 'lapki_locations_cache';
+    const LOCATIONS_CACHE_TTL = 12 * HOUR_IN_SECONDS;
+
     /**
      * Отримати тварину за ID
      */
@@ -69,7 +72,7 @@ class Lapki_Animal extends Lapki_Model {
             'age' => '',
             'gender' => '',
             'size' => '',
-            'status' => 'adoptable',
+            'status' => '',
             'location' => '',
             'distance' => 50,
             'latitude' => null,
@@ -80,6 +83,7 @@ class Lapki_Animal extends Lapki_Model {
             'spayed_neutered' => null,
             'special_needs' => null,
             'organization_id' => null,
+            'search' => '',
             'limit' => 20,
             'offset' => 0,
             'order_by' => 'published_at',
@@ -156,6 +160,12 @@ class Lapki_Animal extends Lapki_Model {
             }
         }
         
+        // Пошук за кличкою
+        if (!empty($params['search'])) {
+            $where_clauses[] = "a.name LIKE %s";
+            $sql_params[] = '%' . $wpdb->esc_like($params['search']) . '%';
+        }
+
         // Локація
         if (!empty($params['location'])) {
             $where_clauses[] = "(a.address_city LIKE %s OR a.address_state LIKE %s)";
@@ -208,6 +218,76 @@ class Lapki_Animal extends Lapki_Model {
     }
     
     /**
+     * Підрахувати кількість тварин з фільтрами
+     */
+    public static function count($params = []) {
+        global $wpdb;
+
+        $defaults = [
+            'type' => '', 'species' => '', 'breed' => '', 'age' => '',
+            'gender' => '', 'size' => '', 'status' => '', 'location' => '',
+            'latitude' => null, 'longitude' => null, 'distance' => 50,
+            'good_with_children' => null, 'good_with_dogs' => null,
+            'good_with_cats' => null, 'spayed_neutered' => null,
+            'special_needs' => null, 'organization_id' => null, 'search' => ''
+        ];
+
+        $params = wp_parse_args($params, $defaults);
+
+        $where_clauses = [];
+        $sql_params = [];
+
+        if (!empty($params['type']))            { $where_clauses[] = "a.type = %s";            $sql_params[] = $params['type']; }
+        if (!empty($params['species']))         { $where_clauses[] = "a.species = %s";         $sql_params[] = $params['species']; }
+        if (!empty($params['age']))             { $where_clauses[] = "a.age = %s";             $sql_params[] = $params['age']; }
+        if (!empty($params['gender']))          { $where_clauses[] = "a.gender = %s";          $sql_params[] = $params['gender']; }
+        if (!empty($params['size']))            { $where_clauses[] = "a.size = %s";            $sql_params[] = $params['size']; }
+        if (!empty($params['status']))          { $where_clauses[] = "a.status = %s";          $sql_params[] = $params['status']; }
+        if (!empty($params['organization_id'])) { $where_clauses[] = "a.organization_id = %d"; $sql_params[] = $params['organization_id']; }
+
+        if (!empty($params['breed'])) {
+            $where_clauses[] = "(a.breed_primary = %s OR a.breed_secondary = %s)";
+            $sql_params[] = $params['breed'];
+            $sql_params[] = $params['breed'];
+        }
+
+        if (!empty($params['search'])) {
+            $where_clauses[] = "a.name LIKE %s";
+            $sql_params[] = '%' . $wpdb->esc_like($params['search']) . '%';
+        }
+
+        if (!empty($params['location'])) {
+            $where_clauses[] = "(a.address_city LIKE %s OR a.address_state LIKE %s)";
+            $loc = '%' . $params['location'] . '%';
+            $sql_params[] = $loc;
+            $sql_params[] = $loc;
+        }
+
+        foreach (['good_with_children', 'good_with_dogs', 'good_with_cats', 'spayed_neutered', 'special_needs'] as $f) {
+            if ($params[$f] !== null) { $where_clauses[] = "a.{$f} = %d"; $sql_params[] = (int)$params[$f]; }
+        }
+
+        if ($params['latitude'] && $params['longitude'] && $params['distance']) {
+            $where_clauses[] = "(6371 * acos(cos(radians(%f)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(%f)) + sin(radians(%f)) * sin(radians(a.latitude)))) <= %d";
+            $sql_params[] = $params['latitude'];
+            $sql_params[] = $params['longitude'];
+            $sql_params[] = $params['latitude'];
+            $sql_params[] = $params['distance'];
+        }
+
+        $sql = "SELECT COUNT(*) FROM " . self::get_table_name() . " a";
+        if (!empty($where_clauses)) {
+            $sql .= " WHERE " . implode(' AND ', $where_clauses);
+        }
+
+        if (!empty($sql_params)) {
+            return (int) $wpdb->get_var($wpdb->prepare($sql, $sql_params));
+        }
+
+        return (int) $wpdb->get_var($sql);
+    }
+
+    /**
      * Створити нову тварину
      */
     public static function create($data) {
@@ -236,7 +316,11 @@ class Lapki_Animal extends Lapki_Model {
             $data,
             self::get_format_array($data)
         );
-        
+
+        if ($result !== false && !empty($data['address_city'])) {
+            self::maybe_bust_locations_cache($data['address_city']);
+        }
+
         return $result !== false ? $wpdb->insert_id : false;
     }
     
@@ -248,14 +332,20 @@ class Lapki_Animal extends Lapki_Model {
         
         $data['updated_at'] = current_time('mysql');
         $data = self::prepare_data($data);
-        
-        return $wpdb->update(
+
+        $result = $wpdb->update(
             self::get_table_name(),
             $data,
             ['id' => $id],
             self::get_format_array($data),
             ['%d']
         );
+
+        if ($result !== false && !empty($data['address_city'])) {
+            self::maybe_bust_locations_cache($data['address_city']);
+        }
+
+        return $result;
     }
     
     /**
@@ -291,7 +381,74 @@ class Lapki_Animal extends Lapki_Model {
         
         return $wpdb->get_row($sql, ARRAY_A);
     }
-    
+
+    /**
+     * Підказки міст для автодоповнення пошуку.
+     * Фільтрація йде по кешованому повному списку міст (transient), а не окремим
+     * SQL-запитом на кожен запит користувача — див. get_all_locations().
+     */
+    public static function search_locations($query, $limit = 10) {
+        $query = mb_strtolower($query, 'UTF-8');
+        $matches = [];
+
+        foreach (self::get_all_locations() as $city) {
+            if (mb_strpos(mb_strtolower($city, 'UTF-8'), $query) !== false) {
+                $matches[] = $city;
+                if (count($matches) >= $limit) {
+                    break;
+                }
+            }
+        }
+
+        return $matches;
+    }
+
+    /**
+     * Повний список унікальних міст (з кешу; SQL-запит виконується лише
+     * при "холодному" кеші — після TTL або явного скидання).
+     */
+    public static function get_all_locations() {
+        $cached = get_transient(self::LOCATIONS_CACHE_KEY);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        global $wpdb;
+
+        $cities = $wpdb->get_col(
+            "SELECT DISTINCT address_city
+             FROM " . self::get_table_name() . "
+             WHERE address_city IS NOT NULL AND address_city != ''
+             ORDER BY address_city ASC"
+        );
+
+        set_transient(self::LOCATIONS_CACHE_KEY, $cities, self::LOCATIONS_CACHE_TTL);
+
+        return $cities;
+    }
+
+    /**
+     * Скидає кеш міст, але тільки якщо перелічене місто дійсно нове —
+     * додавання тварини в уже відоме місто не має сенсу перебудовувати кеш.
+     */
+    private static function maybe_bust_locations_cache($city) {
+        $city = trim((string) $city);
+        if ($city === '') {
+            return;
+        }
+
+        $cached = get_transient(self::LOCATIONS_CACHE_KEY);
+        if (!is_array($cached)) {
+            // Кеш і так холодний — наступне читання підхопить нове місто без скидання
+            return;
+        }
+
+        $known = array_map('mb_strtolower', $cached);
+        if (!in_array(mb_strtolower($city), $known, true)) {
+            delete_transient(self::LOCATIONS_CACHE_KEY);
+        }
+    }
+
     private static function get_format_array($data) {
         $format = [];
         foreach ($data as $key => $value) {
@@ -402,7 +559,23 @@ class Lapki_Organization extends Lapki_Model {
         
         return $wpdb->get_results($wpdb->prepare($sql, $sql_params), ARRAY_A);
     }
-    
+
+    /**
+     * Міста, в яких є організації, з кількістю організацій у кожному
+     * (для рядка фільтрів-боксів над списком організацій)
+     */
+    public static function get_cities_with_counts() {
+        global $wpdb;
+
+        return $wpdb->get_results(
+            "SELECT city, COUNT(*) as count FROM " . self::get_table_name() . "
+             WHERE city IS NOT NULL AND city != ''
+             GROUP BY city
+             ORDER BY count DESC, city ASC",
+            ARRAY_A
+        );
+    }
+
     public static function create($data) {
         global $wpdb;
         
@@ -421,8 +594,63 @@ class Lapki_Organization extends Lapki_Model {
             self::get_table_name(),
             $data
         );
-        
+
         return $result !== false ? $wpdb->insert_id : false;
+    }
+
+    public static function update($id, $data) {
+        global $wpdb;
+
+        $data['updated_at'] = current_time('mysql');
+        $data = self::prepare_data($data);
+        unset($data['id']);
+
+        $result = $wpdb->update(
+            self::get_table_name(),
+            $data,
+            ['id' => $id]
+        );
+
+        return $result !== false;
+    }
+
+    public static function delete($id) {
+        global $wpdb;
+
+        return $wpdb->delete(self::get_table_name(), ['id' => $id]) !== false;
+    }
+
+    /**
+     * Отримати організацію(ї), прив'язану до WP-користувача
+     *
+     * @param int $wp_user_id
+     * @return array Список організацій (зазвичай одна)
+     */
+    public static function get_by_wp_user_id($wp_user_id) {
+        global $wpdb;
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " WHERE wp_user_id = %d",
+            $wp_user_id
+        ), ARRAY_A);
+    }
+
+    /**
+     * Перевірити, чи належить організація вказаному WP-користувачу
+     *
+     * @param int $organization_id
+     * @param int $wp_user_id
+     * @return bool
+     */
+    public static function belongs_to_user($organization_id, $wp_user_id) {
+        global $wpdb;
+
+        $owner_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT wp_user_id FROM " . self::get_table_name() . " WHERE id = %d",
+            $organization_id
+        ));
+
+        return $owner_id !== null && (int) $owner_id === (int) $wp_user_id;
     }
 }
 
@@ -431,7 +659,25 @@ class Lapki_Organization extends Lapki_Model {
  */
 class Lapki_Media extends Lapki_Model {
     protected static $table_name = 'lapki_media';
-    
+
+    /**
+     * Отримати один медіафайл за ID
+     */
+    public static function get($id) {
+        global $wpdb;
+
+        $media = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " WHERE id = %d",
+            $id
+        ), ARRAY_A);
+
+        if ($media) {
+            $media = self::add_urls_to_media($media);
+        }
+
+        return $media;
+    }
+
     /**
      * Отримати медіафайли по сутності з URL
      */
@@ -474,36 +720,18 @@ class Lapki_Media extends Lapki_Model {
     }
     
     /**
-     * Отримати URL головного фото (для зворотної сумісності)
-     */
-    public static function get_primary_photo_url($entity_type, $entity_id, $thumbnail = false) {
-        global $wpdb;
-        
-        $filename = $wpdb->get_var($wpdb->prepare(
-            "SELECT file_path FROM " . self::get_table_name() . " 
-             WHERE entity_type = %s AND entity_id = %d AND media_type = 'photo' 
-             AND is_primary = 1 AND is_active = 1 
-             ORDER BY sort_order ASC LIMIT 1",
-            $entity_type, $entity_id
-        ));
-        
-        if (!$filename) {
-            return '';
-        }
-        
-        return Lapki_Main::get_image_url($filename, $thumbnail);
-    }
-    
-    /**
      * Додати URL до медіафайлу
      */
     private static function add_urls_to_media($media) {
         if (!$media || empty($media['file_path'])) {
             return $media;
         }
-        
+
         $filename = $media['file_path'];
-        
+
+        // Конвертувати is_primary в boolean для JavaScript
+        $media['is_primary'] = (bool) $media['is_primary'];
+
         // Додати URL в залежності від типу медіа
         switch ($media['media_type']) {
             case 'photo':
@@ -511,7 +739,7 @@ class Lapki_Media extends Lapki_Model {
                 $media['thumbnail_url'] = Lapki_Main::get_image_url($filename, true);
                 $media['has_thumbnail'] = Lapki_Main::image_exists($filename, true);
                 break;
-                
+
             case 'video':
                 // Для відео можна додати логіку пізніше
                 if (!empty($media['video_url'])) {
@@ -533,15 +761,15 @@ class Lapki_Media extends Lapki_Model {
      */
     public static function create($data) {
         global $wpdb;
-        
+
         // Перевірити обов'язкові поля
         if (empty($data['entity_type']) || empty($data['entity_id']) || empty($data['media_type'])) {
             return false;
         }
-        
+
         $defaults = [
             'filename' => '',
-            'file_path' => '', // Тепер зберігаємо тільки назву файлу
+            'file_path' => '',
             'title' => '',
             'description' => '',
             'alt_text' => '',
@@ -551,27 +779,23 @@ class Lapki_Media extends Lapki_Model {
             'uploaded_at' => current_time('mysql'),
             'updated_at' => current_time('mysql')
         ];
-        
-        $data = wp_parse_args($data, $defaults);
-        
+
+        $data = array_merge($defaults, $data);
+
         // Якщо це головне фото, зробити інші не головними
         if ($data['is_primary'] && $data['media_type'] === 'photo') {
             self::unset_primary_photo($data['entity_type'], $data['entity_id']);
         }
-        
-        $result = $wpdb->insert(
-            self::get_table_name(),
-            $data,
-            ['%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%s']
-        );
-        
+
+        $result = $wpdb->insert(self::get_table_name(), $data);
+
         return $result !== false ? $wpdb->insert_id : false;
     }
     
     /**
      * Завантажити та обробити зображення
      */
-    public static function upload_image($file, $entity_type, $entity_id, $animal_name = '', $is_primary = false) {
+    public static function upload_image($file, $entity_type, $entity_id, $animal_name = '', $is_primary = false, $sort_order = null) {
         // Перевірити файл
         if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
             return new WP_Error('upload_error', 'Файл не завантажений');
@@ -619,7 +843,11 @@ class Lapki_Media extends Lapki_Model {
             'file_size' => filesize($destination),
             'is_primary' => $is_primary ? 1 : 0
         ];
-        
+
+        if ($sort_order !== null) {
+            $media_data['sort_order'] = $sort_order;
+        }
+
         $media_id = self::create($media_data);
         
         if (!$media_id) {
@@ -686,55 +914,25 @@ class Lapki_Media extends Lapki_Model {
     }
     
     /**
-     * Встановити головне фото
-     */
-    public static function set_primary_photo($media_id) {
-        global $wpdb;
-        
-        // Отримати інформацію про медіафайл
-        $media = $wpdb->get_row($wpdb->prepare(
-            "SELECT entity_type, entity_id FROM " . self::get_table_name() . " 
-             WHERE id = %d AND media_type = 'photo'",
-            $media_id
-        ), ARRAY_A);
-        
-        if (!$media) {
-            return false;
-        }
-        
-        // Зробити всі інші фото неголовними
-        self::unset_primary_photo($media['entity_type'], $media['entity_id']);
-        
-        // Встановити це фото як головне
-        return $wpdb->update(
-            self::get_table_name(),
-            ['is_primary' => 1],
-            ['id' => $media_id],
-            ['%d'],
-            ['%d']
-        );
-    }
-    
-    /**
      * Видалити всі медіафайли сутності
      */
     public static function delete_by_entity($entity_type, $entity_id) {
         global $wpdb;
-        
+
         // Отримати всі медіафайли
         $media_files = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, file_path, media_type FROM " . self::get_table_name() . " 
+            "SELECT id, file_path, media_type FROM " . self::get_table_name() . "
              WHERE entity_type = %s AND entity_id = %d",
             $entity_type, $entity_id
         ), ARRAY_A);
-        
+
         // Видалити файли
         foreach ($media_files as $media) {
             if ($media['media_type'] === 'photo' && !empty($media['file_path'])) {
                 Lapki_Main::delete_image($media['file_path']);
             }
         }
-        
+
         // Видалити записи з БД
         return $wpdb->delete(
             self::get_table_name(),
@@ -745,47 +943,108 @@ class Lapki_Media extends Lapki_Model {
             ['%s', '%d']
         );
     }
-}
-/*
-class Lapki_Media extends Lapki_Model {
-    protected static $table_name = 'lapki_media';
-    
-    public static function get_by_entity($entity_type, $entity_id) {
+
+    /**
+     * Встановити медіафайл головним (автоматично знімає is_primary з інших)
+     */
+    public static function set_primary($media_id) {
         global $wpdb;
-        
-        return $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM " . self::get_table_name() . " 
-             WHERE entity_type = %s AND entity_id = %d AND is_active = 1 
-             ORDER BY is_primary DESC, sort_order ASC",
-            $entity_type, $entity_id
-        ), ARRAY_A);
-    }
-    
-    public static function get_primary_photo($entity_type, $entity_id) {
-        global $wpdb;
-        
-        return $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM " . self::get_table_name() . " 
-             WHERE entity_type = %s AND entity_id = %d AND media_type = 'photo' 
-             AND is_primary = 1 AND is_active = 1",
-            $entity_type, $entity_id
-        ), ARRAY_A);
-    }
-    
-    public static function delete_by_entity($entity_type, $entity_id) {
-        global $wpdb;
-        
-        return $wpdb->delete(
+
+        $media = self::get($media_id);
+        if (!$media) {
+            return false;
+        }
+
+        // Зняти is_primary з усіх медіа цієї сутності
+        $wpdb->update(
             self::get_table_name(),
+            ['is_primary' => 0],
             [
-                'entity_type' => $entity_type,
-                'entity_id' => $entity_id
+                'entity_type' => $media['entity_type'],
+                'entity_id' => $media['entity_id']
             ],
+            ['%d'],
             ['%s', '%d']
         );
+
+        // Встановити is_primary для цього медіа
+        return $wpdb->update(
+            self::get_table_name(),
+            ['is_primary' => 1, 'updated_at' => current_time('mysql')],
+            ['id' => $media_id],
+            ['%d', '%s'],
+            ['%d']
+        );
+    }
+
+    /**
+     * Встановити перше фото головним якщо головного немає
+     */
+    public static function ensure_primary($entity_type, $entity_id) {
+        global $wpdb;
+
+        // Перевірити чи є головне фото
+        $has_primary = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM " . self::get_table_name() . "
+             WHERE entity_type = %s AND entity_id = %d AND media_type = 'photo' AND is_primary = 1 AND is_active = 1",
+            $entity_type, $entity_id
+        ));
+
+        if ($has_primary) {
+            return true; // Головне фото вже є
+        }
+
+        // Знайти перше фото
+        $first_media_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM " . self::get_table_name() . "
+             WHERE entity_type = %s AND entity_id = %d AND media_type = 'photo' AND is_active = 1
+             ORDER BY sort_order ASC
+             LIMIT 1",
+            $entity_type, $entity_id
+        ));
+
+        if (!$first_media_id) {
+            return false; // Немає фото взагалі
+        }
+
+        // Встановити перше фото головним
+        return $wpdb->update(
+            self::get_table_name(),
+            ['is_primary' => 1, 'updated_at' => current_time('mysql')],
+            ['id' => $first_media_id],
+            ['%d', '%s'],
+            ['%d']
+        );
+    }
+
+    /**
+     * Отримати наступний sort_order для сутності
+     */
+    public static function get_next_sort_order($entity_type, $entity_id) {
+        global $wpdb;
+
+        $max_order = $wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(MAX(sort_order), 0) FROM " . self::get_table_name() . "
+             WHERE entity_type = %s AND entity_id = %d",
+            $entity_type, $entity_id
+        ));
+
+        return $max_order + 1;
+    }
+
+    /**
+     * Перевірити чи є головне фото
+     */
+    public static function has_primary($entity_type, $entity_id) {
+        global $wpdb;
+
+        return (bool) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM " . self::get_table_name() . "
+             WHERE entity_type = %s AND entity_id = %d AND media_type = 'photo' AND is_primary = 1 AND is_active = 1",
+            $entity_type, $entity_id
+        ));
     }
 }
-*/
 
 /**
  * Клас для роботи з тегами
@@ -822,20 +1081,147 @@ class Lapki_Tag extends Lapki_Model {
  */
 class Lapki_Attributes extends Lapki_Model {
     protected static $table_name = 'lapki_attributes';
-    
+
+    public static function get($id) {
+        global $wpdb;
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " WHERE id = %d",
+            $id
+        ), ARRAY_A);
+    }
+
+    public static function get_all($filters = []) {
+        global $wpdb;
+
+        $where = [];
+        $values = [];
+
+        if (!empty($filters['lang'])) {
+            $where[] = 'lang = %s';
+            $values[] = $filters['lang'];
+        }
+        if (!empty($filters['entity'])) {
+            $where[] = 'entity = %s';
+            $values[] = $filters['entity'];
+        }
+        if (!empty($filters['entity_type'])) {
+            $where[] = 'entity_type = %s';
+            $values[] = $filters['entity_type'];
+        }
+        if (!empty($filters['attr_name'])) {
+            $where[] = 'attr_name = %s';
+            $values[] = $filters['attr_name'];
+        }
+        if (!empty($filters['search'])) {
+            $where[] = '(attr_value LIKE %s OR attr_display LIKE %s)';
+            $like = '%' . $wpdb->esc_like($filters['search']) . '%';
+            $values[] = $like;
+            $values[] = $like;
+        }
+
+        $where_sql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        $limit = isset($filters['limit']) ? intval($filters['limit']) : 50;
+        $offset = isset($filters['offset']) ? intval($filters['offset']) : 0;
+
+        $values[] = $limit;
+        $values[] = $offset;
+
+        $sql = "SELECT * FROM " . self::get_table_name() . " $where_sql ORDER BY entity, entity_type, attr_name, attr_display LIMIT %d OFFSET %d";
+
+        return $wpdb->get_results($wpdb->prepare($sql, $values), ARRAY_A);
+    }
+
+    public static function count($filters = []) {
+        global $wpdb;
+
+        $where = [];
+        $values = [];
+
+        if (!empty($filters['lang'])) {
+            $where[] = 'lang = %s';
+            $values[] = $filters['lang'];
+        }
+        if (!empty($filters['entity'])) {
+            $where[] = 'entity = %s';
+            $values[] = $filters['entity'];
+        }
+        if (!empty($filters['entity_type'])) {
+            $where[] = 'entity_type = %s';
+            $values[] = $filters['entity_type'];
+        }
+        if (!empty($filters['attr_name'])) {
+            $where[] = 'attr_name = %s';
+            $values[] = $filters['attr_name'];
+        }
+        if (!empty($filters['search'])) {
+            $where[] = '(attr_value LIKE %s OR attr_display LIKE %s)';
+            $like = '%' . $wpdb->esc_like($filters['search']) . '%';
+            $values[] = $like;
+            $values[] = $like;
+        }
+
+        $where_sql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        $sql = "SELECT COUNT(*) FROM " . self::get_table_name() . " $where_sql";
+
+        return (int) (!empty($values) ? $wpdb->get_var($wpdb->prepare($sql, $values)) : $wpdb->get_var($sql));
+    }
+
+    public static function create($data) {
+        global $wpdb;
+        $result = $wpdb->insert(self::get_table_name(), $data);
+        return $result ? $wpdb->insert_id : false;
+    }
+
+    public static function update($id, $data) {
+        global $wpdb;
+        return $wpdb->update(self::get_table_name(), $data, ['id' => $id]);
+    }
+
+    public static function delete($id) {
+        global $wpdb;
+        return $wpdb->delete(self::get_table_name(), ['id' => $id]);
+    }
+
+    /**
+     * Отримати глобальні атрибути (entity_type = 'all'): age, gender, size, coat, status
+     */
+    public static function get_global_attributes($lang = 'uk') {
+        global $wpdb;
+
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT attr_name, attr_value, attr_display
+             FROM " . self::get_table_name() . "
+             WHERE entity = 'animal' AND entity_type = 'all' AND lang = %s
+             ORDER BY attr_name, attr_display",
+            $lang
+        ), ARRAY_A);
+
+        $attributes = [];
+        foreach ($results as $row) {
+            $attributes[$row['attr_name']][] = [
+                'value' => $row['attr_value'],
+                'display_name' => $row['attr_display']
+            ];
+        }
+
+        return $attributes;
+    }
+
     /**
      * Отримати всі типи тварин
      */
     public static function get_animal_types($lang = 'uk') {
         global $wpdb;
-        
-        return $wpdb->get_results($wpdb->prepare(
-            "SELECT DISTINCT entity_type as type, attr_display as display_name 
-             FROM " . self::get_table_name() . " 
-             WHERE entity = 'animal' AND attr_name = 'species' AND lang = %s 
+
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT DISTINCT attr_value as type, attr_display as display_name
+             FROM " . self::get_table_name() . "
+             WHERE entity = 'animal' AND entity_type = 'type' AND attr_name = 'species' AND lang = %s
              ORDER BY attr_display",
             $lang
         ), ARRAY_A);
+
+        return $results;
     }
     
     /**
@@ -876,6 +1262,82 @@ class Lapki_Attributes extends Lapki_Model {
         }
         
         return $attributes;
+    }
+}
+
+/**
+ * Клас для роботи із заявками на усиновлення
+ */
+class Lapki_Application extends Lapki_Model {
+    protected static $table_name = 'lapki_applications';
+
+    const STATUS_NEW = 'new';
+    const STATUS_CONTACTED = 'contacted';
+    const STATUS_APPROVED = 'approved';
+    const STATUS_REJECTED = 'rejected';
+
+    public static function get($id) {
+        global $wpdb;
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT a.*, an.name as animal_name
+             FROM " . self::get_table_name() . " a
+             LEFT JOIN " . Lapki_Animal::get_table_name() . " an ON a.animal_id = an.id
+             WHERE a.id = %d",
+            $id
+        ), ARRAY_A);
+    }
+
+    public static function get_by_organization($organization_id, $status = '') {
+        global $wpdb;
+
+        $sql = "SELECT a.*, an.name as animal_name
+                FROM " . self::get_table_name() . " a
+                LEFT JOIN " . Lapki_Animal::get_table_name() . " an ON a.animal_id = an.id
+                WHERE a.organization_id = %d";
+        $params = [$organization_id];
+
+        if (!empty($status)) {
+            $sql .= " AND a.status = %s";
+            $params[] = $status;
+        }
+
+        $sql .= " ORDER BY a.created_at DESC";
+
+        return $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
+    }
+
+    public static function create($data) {
+        global $wpdb;
+
+        $defaults = [
+            'status' => self::STATUS_NEW,
+            'created_at' => current_time('mysql'),
+            'updated_at' => current_time('mysql'),
+        ];
+
+        $data = wp_parse_args($data, $defaults);
+        $data = self::prepare_data($data);
+
+        $result = $wpdb->insert(self::get_table_name(), $data);
+
+        return $result !== false ? $wpdb->insert_id : false;
+    }
+
+    public static function update_status($id, $status) {
+        global $wpdb;
+
+        return $wpdb->update(
+            self::get_table_name(),
+            ['status' => $status, 'updated_at' => current_time('mysql')],
+            ['id' => $id]
+        ) !== false;
+    }
+
+    public static function delete($id) {
+        global $wpdb;
+
+        return $wpdb->delete(self::get_table_name(), ['id' => $id]) !== false;
     }
 }
 ?>
