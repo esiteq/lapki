@@ -19,7 +19,7 @@ class Lapki_Migrations {
      * тоді maybe_migrate() автоматично перезапустить dbDelta() навіть
      * без деактивації/активації плагіна (для вже встановлених сайтів).
      */
-    const DB_VERSION = '2.2.0';
+    const DB_VERSION = '2.3.0';
 
     /**
      * Викликати на init/plugins_loaded — виконує міграцію лише якщо
@@ -37,8 +37,58 @@ class Lapki_Migrations {
      */
     public static function install() {
         self::create_tables();
+        self::drop_legacy_unique_wp_user();
         Lapki_Roles::install();
         self::maybe_seed();
+        self::maybe_backfill_organization_members();
+    }
+
+    /**
+     * dbDelta() вміє лише ДОДАВАТИ стовпці/індекси — не прибирає застарілі.
+     * unique_wp_user (1 організація = 1 користувач) знято з CREATE TABLE вище
+     * (замінено на членство many-to-many через lapki_organization_members),
+     * тож для вже встановлених сайтів індекс потрібно прибрати вручну.
+     */
+    private static function drop_legacy_unique_wp_user() {
+        global $wpdb;
+
+        $table = $wpdb->prefix . 'lapki_organizations';
+
+        $exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM information_schema.statistics
+             WHERE table_schema = %s AND table_name = %s AND index_name = 'unique_wp_user'",
+            DB_NAME,
+            $table
+        ));
+
+        if ((int) $exists > 0) {
+            $wpdb->query("ALTER TABLE {$table} DROP INDEX unique_wp_user");
+        }
+    }
+
+    /**
+     * Одноразовий backfill: якщо таблиця членства порожня, а організації вже
+     * є (сайт оновлюється зі старої 1-до-1 схеми) — перенести існуючих
+     * власників (organizations.wp_user_id) у членство з роллю 'owner'.
+     */
+    private static function maybe_backfill_organization_members() {
+        global $wpdb;
+
+        $members_table = $wpdb->prefix . 'lapki_organization_members';
+        $members_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$members_table}");
+
+        if ($members_count > 0) {
+            return;
+        }
+
+        $organizations_table = $wpdb->prefix . 'lapki_organizations';
+
+        $wpdb->query(
+            "INSERT INTO {$members_table} (organization_id, wp_user_id, role, created_at)
+             SELECT id, wp_user_id, 'owner', COALESCE(created_at, NOW())
+             FROM {$organizations_table}
+             WHERE wp_user_id IS NOT NULL AND wp_user_id > 0"
+        );
     }
 
     /**
@@ -135,10 +185,26 @@ class Lapki_Migrations {
   updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   url varchar(500) DEFAULT NULL,
   PRIMARY KEY  (id),
-  UNIQUE KEY unique_wp_user (wp_user_id),
+  KEY idx_wp_user (wp_user_id),
   KEY idx_location (state,city),
   KEY idx_type (type),
   KEY idx_verified (is_verified)
+) $charset_collate;";
+
+        // Хто до якої організації прив'язаний — багато користувачів на одну
+        // організацію (замість старого 1-до-1 через unique_wp_user, знятого вище).
+        // wp_user_id тут унікальний: одна людина належить не більш ніж до однієї
+        // організації одночасно (спершу вийти зі старої, потім приєднатись до нової).
+        $tables[] = "CREATE TABLE {$p}lapki_organization_members (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  organization_id bigint(20) unsigned NOT NULL,
+  wp_user_id bigint(20) unsigned NOT NULL,
+  role varchar(20) NOT NULL DEFAULT 'member',
+  created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY  (id),
+  UNIQUE KEY unique_member_user (wp_user_id),
+  KEY idx_organization (organization_id),
+  KEY idx_role (role)
 ) $charset_collate;";
 
         $tables[] = "CREATE TABLE {$p}lapki_media (

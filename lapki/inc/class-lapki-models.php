@@ -621,36 +621,124 @@ class Lapki_Organization extends Lapki_Model {
     }
 
     /**
-     * Отримати організацію(ї), прив'язану до WP-користувача
+     * Отримати організацію(ї), до якої прив'язаний WP-користувач як учасник
+     * (власник або член) — через таблицю членства, не через legacy-колонку
+     * wp_user_id. Один користувач належить не більш ніж до однієї організації,
+     * тож масив завжди містить 0 або 1 елемент — сигнатура (масив) лишена
+     * такою ж, як і була, щоб не чіпати наявних викликів.
      *
      * @param int $wp_user_id
-     * @return array Список організацій (зазвичай одна)
+     * @return array
      */
     public static function get_by_wp_user_id($wp_user_id) {
         global $wpdb;
 
         return $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM " . self::get_table_name() . " WHERE wp_user_id = %d",
+            "SELECT o.* FROM " . self::get_table_name() . " o
+             JOIN " . Lapki_Organization_Member::get_table_name() . " m ON m.organization_id = o.id
+             WHERE m.wp_user_id = %d",
             $wp_user_id
         ), ARRAY_A);
     }
 
     /**
      * Перевірити, чи належить організація вказаному WP-користувачу
+     * (через членство — власник або учасник, будь-яка роль)
      *
      * @param int $organization_id
      * @param int $wp_user_id
      * @return bool
      */
     public static function belongs_to_user($organization_id, $wp_user_id) {
+        return Lapki_Organization_Member::get_role($organization_id, $wp_user_id) !== null;
+    }
+}
+
+/**
+ * Членство користувачів в організаціях (many-to-many: одна організація —
+ * багато користувачів; один користувач — не більше однієї організації).
+ * Замінює стару модель "1 організація = 1 власник" (organizations.wp_user_id),
+ * яка лишається в таблиці лише як історичний "хто створив".
+ */
+class Lapki_Organization_Member extends Lapki_Model {
+    protected static $table_name = 'lapki_organization_members';
+
+    const ROLE_OWNER = 'owner';
+    const ROLE_MEMBER = 'member';
+
+    /**
+     * Членство поточного користувача (з даними організації) або null
+     */
+    public static function get_by_user($wp_user_id) {
         global $wpdb;
 
-        $owner_id = $wpdb->get_var($wpdb->prepare(
-            "SELECT wp_user_id FROM " . self::get_table_name() . " WHERE id = %d",
-            $organization_id
-        ));
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT m.*, o.name as organization_name, o.type as organization_type
+             FROM " . self::get_table_name() . " m
+             JOIN " . Lapki_Organization::get_table_name() . " o ON o.id = m.organization_id
+             WHERE m.wp_user_id = %d",
+            $wp_user_id
+        ), ARRAY_A);
+    }
 
-        return $owner_id !== null && (int) $owner_id === (int) $wp_user_id;
+    /**
+     * Роль користувача в конкретній організації ('owner'/'member') або null,
+     * якщо не є учасником
+     */
+    public static function get_role($organization_id, $wp_user_id) {
+        global $wpdb;
+
+        return $wpdb->get_var($wpdb->prepare(
+            "SELECT role FROM " . self::get_table_name() . " WHERE organization_id = %d AND wp_user_id = %d",
+            $organization_id,
+            $wp_user_id
+        ));
+    }
+
+    /**
+     * Усі учасники організації (з іменами користувачів)
+     */
+    public static function get_members($organization_id) {
+        global $wpdb;
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT m.*, u.display_name, u.user_email
+             FROM " . self::get_table_name() . " m
+             JOIN {$wpdb->users} u ON u.ID = m.wp_user_id
+             WHERE m.organization_id = %d
+             ORDER BY m.role ASC, m.created_at ASC",
+            $organization_id
+        ), ARRAY_A);
+    }
+
+    /**
+     * Приєднати користувача до організації. Повертає false, якщо користувач
+     * вже прив'язаний до будь-якої організації (спершу — leave()).
+     */
+    public static function join($organization_id, $wp_user_id, $role = self::ROLE_MEMBER) {
+        global $wpdb;
+
+        if (self::get_by_user($wp_user_id)) {
+            return false;
+        }
+
+        $result = $wpdb->insert(self::get_table_name(), [
+            'organization_id' => $organization_id,
+            'wp_user_id' => $wp_user_id,
+            'role' => $role,
+            'created_at' => current_time('mysql'),
+        ]);
+
+        return $result !== false;
+    }
+
+    /**
+     * Прибрати користувача з організації (незалежно від ролі)
+     */
+    public static function leave($wp_user_id) {
+        global $wpdb;
+
+        return $wpdb->delete(self::get_table_name(), ['wp_user_id' => $wp_user_id]) !== false;
     }
 }
 

@@ -168,10 +168,12 @@ class Lapki_REST_API {
             [
                 'methods' => WP_REST_Server::CREATABLE,
                 'callback' => [__CLASS__, 'create_organization'],
-                'permission_callback' => [__CLASS__, 'check_manage_organizations_permission']
+                // Самостійна реєстрація організації — будь-який залогінений користувач
+                // без наявного членства (перевірка всередині обробника)
+                'permission_callback' => [__CLASS__, 'check_is_logged_in']
             ]
         ]);
-        
+
         register_rest_route($namespace, '/organizations/(?P<id>\d+)', [
             [
                 'methods' => WP_REST_Server::READABLE,
@@ -196,7 +198,29 @@ class Lapki_REST_API {
                 'permission_callback' => [__CLASS__, 'check_organization_owner_permission']
             ]
         ]);
-        
+
+        // ЧЛЕНСТВО В ОРГАНІЗАЦІЇ (реєстрація користувача і привʼязка до
+        // притулку/ГО — окремі кроки; join — приєднатись до вже існуючої
+        // організації, leave — вийти зі своєї)
+        register_rest_route($namespace, '/organizations/(?P<id>\d+)/join', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [__CLASS__, 'join_organization'],
+            'permission_callback' => [__CLASS__, 'check_is_logged_in'],
+            'args' => [
+                'id' => [
+                    'required' => true,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint'
+                ]
+            ]
+        ]);
+
+        register_rest_route($namespace, '/organizations/leave', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [__CLASS__, 'leave_organization'],
+            'permission_callback' => [__CLASS__, 'check_is_logged_in']
+        ]);
+
         // STATISTICS ROUTE
         register_rest_route($namespace, '/stats', [
             'methods' => WP_REST_Server::READABLE,
@@ -568,10 +592,15 @@ class Lapki_REST_API {
     
     /**
      * POST /wp-json/lapki/v1/organizations
+     * Самостійна реєстрація організації залогіненим користувачем — робить
+     * його власником (роль 'owner' у членстві + WP-роль lapki_shelter_admin).
+     * Користувач, який вже прив'язаний до будь-якої організації, спершу має
+     * вийти з неї (POST /organizations/leave).
      */
     public static function create_organization($request) {
         $data = $request->get_json_params();
-        
+        $wp_user_id = get_current_user_id();
+
         // Базова валідація
         $required_fields = ['name', 'type'];
         foreach ($required_fields as $field) {
@@ -579,19 +608,90 @@ class Lapki_REST_API {
                 return new WP_Error('missing_field', sprintf(__("Поле '%s' є обов'язковим", 'lapki'), $field), ['status' => 400]);
             }
         }
-        
-        if (empty($data['wp_user_id'])) {
-            $data['wp_user_id'] = get_current_user_id();
+
+        if (!current_user_can('manage_options') && Lapki_Organization_Member::get_by_user($wp_user_id)) {
+            return new WP_Error(
+                'already_member',
+                __('Ви вже прив\'язані до організації. Спершу вийдіть з неї.', 'lapki'),
+                ['status' => 409]
+            );
         }
-        
+
+        $data['wp_user_id'] = $wp_user_id;
+
         $org_id = Lapki_Organization::create($data);
-        
+
         if (!$org_id) {
             return new WP_Error('creation_failed', __('Не вдалося створити організацію', 'lapki'), ['status' => 500]);
         }
-        
+
+        Lapki_Organization_Member::join($org_id, $wp_user_id, Lapki_Organization_Member::ROLE_OWNER);
+
+        $user = get_userdata($wp_user_id);
+        if ($user && !in_array('administrator', $user->roles, true)) {
+            $user->set_role(Lapki_Roles::ROLE_SHELTER_ADMIN);
+        }
+
         $organization = Lapki_Organization::get($org_id);
         return new WP_REST_Response($organization, 201);
+    }
+
+    /**
+     * POST /wp-json/lapki/v1/organizations/{id}/join
+     * Приєднатись до вже існуючої організації як учасник ('member').
+     */
+    public static function join_organization($request) {
+        $organization_id = $request->get_param('id');
+        $wp_user_id = get_current_user_id();
+
+        $organization = Lapki_Organization::get($organization_id);
+        if (!$organization) {
+            return new WP_Error('organization_not_found', __('Організацію не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        if (Lapki_Organization_Member::get_by_user($wp_user_id)) {
+            return new WP_Error(
+                'already_member',
+                __('Ви вже прив\'язані до організації. Спершу вийдіть з неї.', 'lapki'),
+                ['status' => 409]
+            );
+        }
+
+        $joined = Lapki_Organization_Member::join($organization_id, $wp_user_id, Lapki_Organization_Member::ROLE_MEMBER);
+        if (!$joined) {
+            return new WP_Error('join_failed', __('Не вдалося приєднатись до організації', 'lapki'), ['status' => 500]);
+        }
+
+        $user = get_userdata($wp_user_id);
+        if ($user && !in_array('administrator', $user->roles, true)) {
+            $user->set_role(Lapki_Roles::ROLE_VOLUNTEER);
+        }
+
+        return new WP_REST_Response(Lapki_Organization_Member::get_by_user($wp_user_id), 200);
+    }
+
+    /**
+     * POST /wp-json/lapki/v1/organizations/leave
+     * Вийти зі своєї організації (незалежно від ролі — власник чи учасник).
+     */
+    public static function leave_organization($request) {
+        $wp_user_id = get_current_user_id();
+
+        if (!Lapki_Organization_Member::get_by_user($wp_user_id)) {
+            return new WP_Error('not_a_member', __('Ви не прив\'язані до жодної організації', 'lapki'), ['status' => 404]);
+        }
+
+        Lapki_Organization_Member::leave($wp_user_id);
+
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    /**
+     * Дозволити дію будь-якому залогіненому користувачу (без вимог до capability) —
+     * для самостійної реєстрації/приєднання/виходу з організації.
+     */
+    public static function check_is_logged_in($request) {
+        return is_user_logged_in();
     }
 
     /**
@@ -634,18 +734,11 @@ class Lapki_REST_API {
     }
 
     /**
-     * Редагування/видалення організації: власник (або адмін)
+     * Редагування/видалення організації: саме власник ('owner'), не будь-який
+     * учасник (або адмін сайту)
      */
     public static function check_organization_owner_permission($request) {
-        if (!current_user_can(Lapki_Roles::CAP_MANAGE_ORGANIZATIONS)) {
-            return false;
-        }
-
-        if (current_user_can('manage_options')) {
-            return true;
-        }
-
-        return Lapki_Roles::user_owns_organization($request->get_param('id'), get_current_user_id());
+        return Lapki_Roles::user_is_organization_owner($request->get_param('id'), get_current_user_id());
     }
 
     // =======================================
@@ -1236,39 +1329,17 @@ class Lapki_REST_API {
     // =======================================
 
     /**
-     * Типи реєстрації → WP-роль. Притулок/клініка/ветеринар отримують
-     * lapki_shelter_admin (можуть керувати профілем організації), приватна
-     * особа/волонтер — lapki_volunteer (тільки свої тварини).
-     */
-    private static function get_signup_types() {
-        return [
-            'individual' => Lapki_Roles::ROLE_VOLUNTEER,
-            'shelter'    => Lapki_Roles::ROLE_SHELTER_ADMIN,
-            'vet_clinic' => Lapki_Roles::ROLE_SHELTER_ADMIN,
-            'vet'        => Lapki_Roles::ROLE_SHELTER_ADMIN,
-            'volunteer'  => Lapki_Roles::ROLE_VOLUNTEER,
-        ];
-    }
-
-    /**
      * POST /wp-json/lapki/v1/signup
-     * Публічна реєстрація: приватна особа, притулок, ветклініка, ветеринар, волонтер.
-     * Створює WP-користувача + організацію (тварини/заявки прив'язані до organization_id).
+     * Публічна реєстрація — лише акаунт користувача, без організації.
+     * Прив'язка до притулку/ГО (створення нової або приєднання до вже
+     * існуючої) — окремий крок у кабінеті (POST /organizations або
+     * POST /organizations/{id}/join).
      */
     public static function signup_user($request) {
-        $signup_types = self::get_signup_types();
-
-        $user_type = sanitize_key((string) $request->get_param('user_type'));
         $name = sanitize_text_field((string) $request->get_param('name'));
-        $org_name = sanitize_text_field((string) $request->get_param('organization_name'));
         $email = sanitize_email((string) $request->get_param('email'));
         $password = (string) $request->get_param('password');
         $phone = sanitize_text_field((string) $request->get_param('phone'));
-        $city = sanitize_text_field((string) $request->get_param('city'));
-
-        if (!isset($signup_types[$user_type])) {
-            return new WP_Error('invalid_type', __('Оберіть тип реєстрації', 'lapki'), ['status' => 400]);
-        }
 
         if (empty($name) || empty($email) || !is_email($email) || strlen($password) < 6) {
             return new WP_Error('invalid_data', __("Заповніть ім'я, коректний email і пароль (мінімум 6 символів)", 'lapki'), ['status' => 400]);
@@ -1283,26 +1354,16 @@ class Lapki_REST_API {
             'user_email' => $email,
             'user_pass' => $password,
             'display_name' => $name,
-            'role' => $signup_types[$user_type],
+            'role' => Lapki_Roles::ROLE_VOLUNTEER,
         ]);
 
         if (is_wp_error($user_id)) {
             return new WP_Error('user_creation_failed', $user_id->get_error_message(), ['status' => 500]);
         }
 
-        update_user_meta($user_id, 'lapki_user_type', $user_type);
         if (!empty($phone)) {
             update_user_meta($user_id, 'lapki_phone', $phone);
         }
-
-        $organization_id = Lapki_Organization::create([
-            'wp_user_id' => $user_id,
-            'name' => !empty($org_name) ? $org_name : $name,
-            'type' => $user_type,
-            'email' => $email,
-            'phone' => $phone,
-            'city' => $city,
-        ]);
 
         wp_set_current_user($user_id);
         wp_set_auth_cookie($user_id, true);
@@ -1310,7 +1371,6 @@ class Lapki_REST_API {
         return new WP_REST_Response([
             'success' => true,
             'user_id' => $user_id,
-            'organization_id' => $organization_id ?: null,
             'redirect' => home_url('/cabinet/'),
         ], 201);
     }

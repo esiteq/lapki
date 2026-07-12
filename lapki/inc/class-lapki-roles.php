@@ -64,7 +64,9 @@ class Lapki_Roles {
     }
 
     /**
-     * Чи є користувач власником організації (або адміністратором сайту)
+     * Чи належить користувач до організації (власник або учасник — будь-яка
+     * роль членства), або чи є адміністратором сайту. Використовується для
+     * дозволу керування тваринами/медіа/заявками організації.
      *
      * @param int $organization_id
      * @param int $wp_user_id
@@ -75,6 +77,24 @@ class Lapki_Roles {
             return true;
         }
 
-        return Lapki_Organization::belongs_to_user($organization_id, $wp_user_id);
+        return Lapki_Organization_Member::get_role($organization_id, $wp_user_id) !== null;
+    }
+
+    /**
+     * Чи є користувач саме ВЛАСНИКОМ організації (роль 'owner'), або
+     * адміністратором сайту. Суворіша перевірка — для редагування профілю
+     * самої організації (на відміну від user_owns_organization(), яка
+     * дозволяє й звичайним учасникам керувати тваринами).
+     *
+     * @param int $organization_id
+     * @param int $wp_user_id
+     * @return bool
+     */
+    public static function user_is_organization_owner($organization_id, $wp_user_id) {
+        if (user_can($wp_user_id, 'manage_options')) {
+            return true;
+        }
+
+        return Lapki_Organization_Member::get_role($organization_id, $wp_user_id) === Lapki_Organization_Member::ROLE_OWNER;
     }
 }

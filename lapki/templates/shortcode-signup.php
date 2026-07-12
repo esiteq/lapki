@@ -1,6 +1,8 @@
 <?php
 /**
  * Шорткод [lapki_signup] — форма реєстрації нового користувача.
+ * Лише акаунт — прив'язка до притулку/ГО (створення нової чи приєднання
+ * до вже існуючої) відбувається окремим кроком у кабінеті ([lapki_cabinet]).
  *
  * @package Lapki
  */
@@ -18,27 +20,9 @@ if (!defined('ABSPATH')) {
     <?php endif; ?>
         <form id="lapki-signup-form" class="row g-3" novalidate>
             <div class="col-12">
-                <label class="form-label">Хто ви? *</label>
-                <select name="user_type" id="lapki-signup-type" class="form-select" required>
-                    <option value="" selected disabled>Оберіть тип реєстрації</option>
-                    <option value="individual">Приватна особа</option>
-                    <option value="shelter">Притулок</option>
-                    <option value="vet_clinic">Ветеринарна клініка</option>
-                    <option value="vet">Окремий ветеринар</option>
-                    <option value="volunteer">Волонтер</option>
-                </select>
-                <div class="invalid-feedback">Будь ласка, оберіть тип реєстрації.</div>
-            </div>
-
-            <div class="col-12">
                 <label class="form-label">Ваше ім'я *</label>
                 <input type="text" name="name" class="form-control" required>
                 <div class="invalid-feedback">Будь ласка, вкажіть ваше ім'я.</div>
-            </div>
-
-            <div class="col-12 d-none" id="lapki-signup-org-wrap">
-                <label class="form-label">Назва організації</label>
-                <input type="text" name="organization_name" class="form-control" placeholder="Якщо відрізняється від імені вище">
             </div>
 
             <div class="col-md-6">
@@ -52,18 +36,15 @@ if (!defined('ABSPATH')) {
                 <div class="invalid-feedback">Пароль має містити щонайменше 6 символів.</div>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-12">
                 <label class="form-label">Телефон</label>
                 <input type="tel" name="phone" class="form-control">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Місто</label>
-                <input type="text" name="city" class="form-control">
             </div>
 
             <div class="col-12">
                 <div id="lapki-signup-alert" class="alert d-none" role="alert"></div>
                 <button type="submit" class="btn btn-warning w-100">Зареєструватися</button>
+                <p class="text-muted small mt-2 mb-0">Після реєстрації в кабінеті можна приєднатись до вже існуючого притулку/ГО або зареєструвати свій.</p>
             </div>
         </form>
 </div>
