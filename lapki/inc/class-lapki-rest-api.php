@@ -936,7 +936,7 @@ class Lapki_REST_API {
             ],
             'type' => [
                 'type' => 'string',
-                'enum' => ['individual', 'shelter', 'rescue', 'vet_clinic'],
+                'enum' => ['individual', 'shelter', 'rescue', 'vet_clinic', 'vet', 'volunteer'],
                 'description' => 'Тип організації'
             ],
             'location' => [

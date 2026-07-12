@@ -27,6 +27,7 @@ class Lapki_Frontend {
         add_rewrite_rule('^organizations/([0-9]+)/?$', 'index.php?lapki_page=organization_single&lapki_org_id=$matches[1]', 'top');
         add_rewrite_rule('^widget-demo/?$', 'index.php?lapki_page=widget_demo', 'top');
         add_rewrite_rule('^profile/?$', 'index.php?lapki_page=profile', 'top');
+        add_rewrite_rule('^donate/?$', 'index.php?lapki_page=donate', 'top');
     }
 
     public static function add_query_vars($vars) {
@@ -50,6 +51,7 @@ class Lapki_Frontend {
             'organization_single' => 'single-organization.php',
             'widget_demo' => 'widget-demo.php',
             'profile' => 'profile.php',
+            'donate' => 'donate.php',
         ];
 
         if (empty($map[$page])) {

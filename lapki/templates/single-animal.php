@@ -37,6 +37,10 @@ $photos = !empty($animal['media']) ? array_values(array_filter($animal['media'],
 })) : [];
 
 $main_photo = !empty($photos[0]['url']) ? $photos[0]['url'] : '';
+
+// Контакти організації — для модалки донату (окремий SELECT, бо Lapki_Animal::get()
+// підтягує лише organization_name/organization_type через JOIN, без phone/email)
+$donate_organization = !empty($animal['organization_id']) ? Lapki_Organization::get($animal['organization_id']) : null;
 ?>
 
 <section class="py-5">
@@ -120,6 +124,12 @@ $main_photo = !empty($photos[0]['url']) ? $photos[0]['url'] : '';
                 <button type="button" class="btn lapki-btn-orange btn-lg w-100" data-bs-toggle="modal" data-bs-target="#lapki-application-modal">
                     Хочу прилаштувати
                 </button>
+
+                <?php if ($donate_organization) : ?>
+                <button type="button" class="btn lapki-btn-green btn-lg w-100 mt-2" data-bs-toggle="modal" data-bs-target="#lapki-donate-modal">
+                    <i class="fas fa-heart me-1"></i>Допомогти грошима
+                </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -159,5 +169,46 @@ $main_photo = !empty($photos[0]['url']) ? $photos[0]['url'] : '';
         </div>
     </div>
 </div>
+
+<?php if ($donate_organization) : ?>
+<!-- Модалка донату — контакти організації для перерахування коштів -->
+<div class="modal fade" id="lapki-donate-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Допомогти грошима — <?php echo esc_html($animal['name']); ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрити"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    Щоб допомогти саме <?php echo esc_html($animal['name']); ?>, зв'яжіться з організацією, яка про неї піклується,
+                    і уточніть реквізити для донату:
+                </p>
+                <div class="card border-0 bg-light">
+                    <div class="card-body">
+                        <div class="fw-semibold mb-2">
+                            <a href="<?php echo esc_url(home_url('/organizations/' . (int) $donate_organization['id'] . '/')); ?>" class="lapki-link-green">
+                                <?php echo esc_html($donate_organization['name']); ?>
+                            </a>
+                        </div>
+                        <?php if (!empty($donate_organization['phone'])) : ?>
+                            <p class="mb-1"><i class="fas fa-phone"></i> <?php echo esc_html($donate_organization['phone']); ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($donate_organization['email'])) : ?>
+                            <p class="mb-1"><i class="fas fa-envelope"></i> <a href="mailto:<?php echo esc_attr($donate_organization['email']); ?>"><?php echo esc_html($donate_organization['email']); ?></a></p>
+                        <?php endif; ?>
+                        <?php if (!empty($donate_organization['website'])) : ?>
+                            <p class="mb-0"><i class="fas fa-globe"></i> <a href="<?php echo esc_url($donate_organization['website']); ?>" target="_blank" rel="noopener">Сайт організації</a></p>
+                        <?php endif; ?>
+                        <?php if (empty($donate_organization['phone']) && empty($donate_organization['email']) && empty($donate_organization['website'])) : ?>
+                            <p class="mb-0 text-muted">Контакти поки не вказані — перегляньте сторінку організації.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php get_footer(); ?>
