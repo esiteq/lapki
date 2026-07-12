@@ -221,6 +221,21 @@ class Lapki_REST_API {
             'permission_callback' => [__CLASS__, 'check_is_logged_in']
         ]);
 
+        // Власник не може просто вийти (організація лишиться без власника) —
+        // спершу має передати право власності комусь із учасників
+        register_rest_route($namespace, '/organizations/(?P<id>\d+)/transfer', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [__CLASS__, 'transfer_organization_owner'],
+            'permission_callback' => [__CLASS__, 'check_organization_owner_permission'],
+            'args' => [
+                'id' => [
+                    'required' => true,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint'
+                ]
+            ]
+        ]);
+
         // STATISTICS ROUTE
         register_rest_route($namespace, '/stats', [
             'methods' => WP_REST_Server::READABLE,
@@ -672,16 +687,63 @@ class Lapki_REST_API {
 
     /**
      * POST /wp-json/lapki/v1/organizations/leave
-     * Вийти зі своєї організації (незалежно від ролі — власник чи учасник).
+     * Вийти зі своєї організації. Власник вийти так не може — організація
+     * лишилась би без власника; спершу має передати право власності
+     * (POST /organizations/{id}/transfer).
      */
     public static function leave_organization($request) {
         $wp_user_id = get_current_user_id();
+        $membership = Lapki_Organization_Member::get_by_user($wp_user_id);
 
-        if (!Lapki_Organization_Member::get_by_user($wp_user_id)) {
+        if (!$membership) {
             return new WP_Error('not_a_member', __('Ви не прив\'язані до жодної організації', 'lapki'), ['status' => 404]);
         }
 
+        if ($membership['role'] === Lapki_Organization_Member::ROLE_OWNER) {
+            return new WP_Error(
+                'owner_cannot_leave',
+                __('Власник не може вийти з організації. Спершу передайте право власності іншому учаснику.', 'lapki'),
+                ['status' => 403]
+            );
+        }
+
         Lapki_Organization_Member::leave($wp_user_id);
+
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    /**
+     * POST /wp-json/lapki/v1/organizations/{id}/transfer
+     * Власник передає право власності іншому учаснику ТІЄЇ Ж організації.
+     * Сам стає звичайним учасником (не виходить з організації).
+     */
+    public static function transfer_organization_owner($request) {
+        $organization_id = $request->get_param('id');
+        $wp_user_id = get_current_user_id();
+        $new_owner_id = absint($request->get_param('new_owner_id'));
+
+        if (!$new_owner_id || $new_owner_id === $wp_user_id) {
+            return new WP_Error('invalid_new_owner', __('Оберіть іншого учасника організації.', 'lapki'), ['status' => 400]);
+        }
+
+        $transferred = Lapki_Organization_Member::transfer_owner($organization_id, $wp_user_id, $new_owner_id);
+        if (!$transferred) {
+            return new WP_Error(
+                'not_a_member',
+                __('Обраний користувач не є учасником цієї організації.', 'lapki'),
+                ['status' => 400]
+            );
+        }
+
+        $old_owner = get_userdata($wp_user_id);
+        if ($old_owner && !in_array('administrator', $old_owner->roles, true)) {
+            $old_owner->set_role(Lapki_Roles::ROLE_VOLUNTEER);
+        }
+
+        $new_owner = get_userdata($new_owner_id);
+        if ($new_owner && !in_array('administrator', $new_owner->roles, true)) {
+            $new_owner->set_role(Lapki_Roles::ROLE_SHELTER_ADMIN);
+        }
 
         return new WP_REST_Response(['success' => true], 200);
     }

@@ -740,6 +740,24 @@ class Lapki_Organization_Member extends Lapki_Model {
 
         return $wpdb->delete(self::get_table_name(), ['wp_user_id' => $wp_user_id]) !== false;
     }
+
+    /**
+     * Передати право власності іншому учаснику ТІЄЇ Ж організації —
+     * поточний власник стає 'member', обраний учасник стає 'owner'.
+     * Повертає false, якщо новий власник не є учасником цієї організації.
+     */
+    public static function transfer_owner($organization_id, $current_owner_id, $new_owner_id) {
+        global $wpdb;
+
+        if (self::get_role($organization_id, $new_owner_id) === null) {
+            return false;
+        }
+
+        $wpdb->update(self::get_table_name(), ['role' => self::ROLE_MEMBER], ['wp_user_id' => $current_owner_id]);
+        $wpdb->update(self::get_table_name(), ['role' => self::ROLE_OWNER], ['wp_user_id' => $new_owner_id]);
+
+        return true;
+    }
 }
 
 /**

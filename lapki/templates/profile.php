@@ -36,6 +36,18 @@ $current_user = wp_get_current_user();
 $membership = Lapki_Organization_Member::get_by_user($current_user->ID);
 $organization = $membership ? Lapki_Organization::get($membership['organization_id']) : null;
 
+// Власник не може вийти з організації — лише передати комусь іншому з учасників
+$is_owner = $membership && $membership['role'] === Lapki_Organization_Member::ROLE_OWNER;
+$other_members = [];
+if ($is_owner) {
+    $other_members = array_values(array_filter(
+        Lapki_Organization_Member::get_members($organization['id']),
+        function ($m) use ($current_user) {
+            return (int) $m['wp_user_id'] !== (int) $current_user->ID;
+        }
+    ));
+}
+
 $allowed_tabs = ['home', 'animals'];
 $tab = isset($_GET['tab']) && in_array($_GET['tab'], $allowed_tabs, true) ? $_GET['tab'] : 'home';
 
@@ -100,7 +112,7 @@ $avatar_letter = mb_strtoupper(mb_substr($current_user->display_name, 0, 1));
                 <div class="list-group lapki-cabinet-nav shadow-sm">
                     <a href="<?php echo esc_url(add_query_arg('tab', 'home')); ?>"
                        class="list-group-item list-group-item-action<?php echo $tab === 'home' ? ' active' : ''; ?>">
-                        <i class="fas fa-house me-2"></i>Головна
+                        <i class="fas fa-home me-2"></i>Головна
                     </a>
                     <a href="<?php echo esc_url(add_query_arg('tab', 'animals')); ?>"
                        class="list-group-item list-group-item-action<?php echo $tab === 'animals' ? ' active' : ''; ?>">
@@ -108,7 +120,7 @@ $avatar_letter = mb_strtoupper(mb_substr($current_user->display_name, 0, 1));
                     </a>
                     <a href="<?php echo esc_url(wp_logout_url(home_url('/'))); ?>"
                        class="list-group-item list-group-item-action">
-                        <i class="fas fa-right-from-bracket me-2"></i>Вихід
+                        <i class="fas fa-sign-out-alt me-2"></i>Вихід
                     </a>
                 </div>
             </div>
@@ -148,9 +160,30 @@ $avatar_letter = mb_strtoupper(mb_substr($current_user->display_name, 0, 1));
                                     <a href="<?php echo esc_url(home_url('/organizations/' . (int) $organization['id'] . '/')); ?>" class="lapki-link-green">
                                         Переглянути публічну сторінку →
                                     </a>
-                                    <button type="button" id="lapki-leave-org-btn" class="btn btn-sm btn-outline-danger">Залишити організацію</button>
+                                    <?php if (!$is_owner) : ?>
+                                        <button type="button" id="lapki-leave-org-btn" class="btn btn-sm btn-outline-danger">Залишити організацію</button>
+                                    <?php endif; ?>
                                 </div>
                                 <div id="lapki-leave-org-alert" class="alert d-none mt-3" role="alert"></div>
+
+                                <?php if ($is_owner) : ?>
+                                    <hr>
+                                    <h3 class="h6 fw-bold">Передати право власності</h3>
+                                    <?php if (!empty($other_members)) : ?>
+                                        <p class="text-muted small">Власник не може вийти з організації — спершу передайте право власності іншому учаснику.</p>
+                                        <div class="input-group">
+                                            <select id="lapki-transfer-owner-select" class="form-select">
+                                                <?php foreach ($other_members as $m) : ?>
+                                                    <option value="<?php echo (int) $m['wp_user_id']; ?>"><?php echo esc_html($m['display_name']); ?> (<?php echo esc_html($m['user_email']); ?>)</option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <button type="button" id="lapki-transfer-owner-btn" class="btn btn-outline-danger" data-org-id="<?php echo (int) $organization['id']; ?>">Передати</button>
+                                        </div>
+                                        <div id="lapki-transfer-owner-alert" class="alert d-none mt-3" role="alert"></div>
+                                    <?php else : ?>
+                                        <p class="text-muted small mb-0">У організації поки немає інших учасників, тож передати чи вийти неможливо. Поділіться посиланням на <a href="<?php echo esc_url(home_url('/signup/')); ?>">реєстрацію</a>, щоб хтось приєднався.</p>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php else : ?>
