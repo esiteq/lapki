@@ -1,14 +1,18 @@
 # SNAPSHOT — стан між сесіями
 
 > Оновлюється вручну або через Claude після кожної значної зміни.
-> Дата останнього оновлення: **2026-07-07** (цей файл частково застарів після сесії 2 — актуальний стан дивись у `CLAUDE.md`)
+> Дата останнього оновлення: **2026-07-11** (сесія 11 — цей файл, `CLAUDE.md`, `README.md` синхронізовано з реальним станом коду)
 
 ---
 
 ## Поточна версія
-- **Plugin version:** 2.0.0
-- **Git:** репозиторій на рівень вище (`wp-content/plugins/.git`), гілка `master`
-  - Багато незакомічених змін (models/rest-api/admin/lapki.php modified, `class-lapki-cache.php` видалено, `CLAUDE.md`/`CHANGELOG.md`/`.doc/todo.md`/`README.md`/css/js untracked)
+
+- **Plugin version:** 2.0.0 (docblock у `lapki.php`) / `LAPKI_VERSION` константа — `2.0.10` (розбіжність існує давно, не виправлялась)
+- **Git:** репозиторій на рівень вище (`wp-content/plugins/.git`), гілка `master`, покриває лише `lapki/` (плагін)
+  - **Публічний на GitHub:** https://github.com/esiteq/lapki (перевірено 2026-07-11 — доступний без авторизації через API/raw/`git clone`)
+  - Останній **запушений** коміт: `2650931` — "Add DB migrations, roles/auth, public frontend, signup and user cabinet" (squash сесій 2-8; до цього репозиторій довго стояв не закомічений)
+  - **Незакомічені зміни станом на сесію 10:** `CHANGELOG.md`, `inc/class-lapki-frontend.php`, `inc/class-lapki-rest-api.php`, `templates/single-organization.php` (modified), `templates/widget-demo.php` (untracked) — CORS для embed-віджета, rewrite `/widget-demo/`, виправлення лічильника тварин
+  - **⚠️ Зовсім не під git:** `wp-content/themes/lapki/` (тема) і `/var/www/lapki/js/animals.js` (embed-віджет, корінь сайту) — окремих репозиторіїв для них немає
 
 ---
 
@@ -16,34 +20,37 @@
 
 ```
 lapki/
-├── lapki.php                    # Головний клас Lapki_Main
+├── lapki.php                      # Головний клас Lapki_Main
 ├── inc/
-│   ├── class-lapki-models.php   # Lapki_Animal, Lapki_Organization, Lapki_Media, Lapki_Attributes
-│   ├── class-lapki-rest-api.php # REST API endpoints (namespace: lapki/v1)
-│   ├── class-lapki-admin.php    # Адмін-панель + Lapki_Animals_List_Table
-│   └── class-eq-form.php        # Конструктор форм EQ_Form
-├── js/
-│   └── lapki-admin.js           # JS для адмін-панелі (~53KB: список, форма, атрибути, пагінація)
-├── css/
-│   └── lapki-admin.css          # CSS для адмін-панелі
-├── .doc/
-│   ├── lapki.sql                # Повна SQL-схема (не підключена до activate())
-│   ├── migrations/001_add_petfinder_fields.sql
-│   └── todo.md                  # Пріоритезований план дій
-├── CLAUDE.md                    # Архітектурна документація
-├── CHANGELOG.md                 # Лог змін
-└── .claude/
-    └── SNAPSHOT.md              # Цей файл
+│   ├── class-lapki-models.php     # Animal, Organization (+get_cities_with_counts), Media, Attributes, Tag, Application
+│   ├── class-lapki-rest-api.php   # REST API (namespace lapki/v1) + signup + allow_embed_cors()
+│   ├── class-lapki-admin.php      # Адмін-панель (тварини/організації/атрибути/налаштування) — manage_options-only
+│   ├── class-lapki-roles.php      # lapki_shelter_admin, lapki_volunteer
+│   ├── class-lapki-migrations.php # dbDelta() + авто-апгрейд + seed
+│   ├── class-lapki-template-loader.php # тема → плагін
+│   └── class-lapki-frontend.php   # rewrite rules + шорткоди [lapki_signup]/[lapki_cabinet]
+├── templates/
+│   ├── archive-animals.php, single-animal.php
+│   ├── archive-organizations.php  # + фільтр міст (кольорові бокси)
+│   ├── single-organization.php    # заголовок кількості тварин виправлено (сесія 10)
+│   ├── shortcode-signup.php       # /signup/
+│   ├── shortcode-cabinet.php      # /cabinet/
+│   └── widget-demo.php            # /widget-demo/ (не в меню)
+├── js/lapki-admin.js, css/lapki-admin.css   # адмінка
+├── tests/                         # PHPUnit
+├── CLAUDE.md, CHANGELOG.md, README.md
+└── .claude/SNAPSHOT.md             # цей файл
 
-wp-content/themes/lapki/         # Публічна тема (Bootstrap 5)
-├── front-page.php, header.php, footer.php, 404.php, page.php
-├── assets/css/lapki.css, assets/js/lapki.js
-└── lapki/                       # Тека перевизначення шаблонів плагіна (WooCommerce-подібний патерн)
+wp-content/themes/lapki/            # Bootstrap 5, НЕ під git
+├── header.php  # посилання «Кабінет» для залогінених
+└── assets/css/lapki.css, assets/js/lapki.js  # стилі/JS кабінету, реєстрації, фільтра міст, форми заявки
 
-server/                          # Node.js scaffold для Етапу 2 (Express, mysql2, JWT, jest) — вже досить розвинений
+/var/www/lapki/js/animals.js        # embed-віджет, НЕ під git, віддається Apache напряму
+
+server/                             # Node.js scaffold для Етапу 2 — не чіпати
 ```
 
-**Резервні копії (не чіпати):** `lapki.bak`, `lapki.2.bak`, `inc/class-eq-form.bak`, `inc/class-lapki-admin.bak`, `inc/class-lapki-admin.2.bak`
+**Резервні копії (не чіпати, gitignored):** `lapki.bak`, `lapki.2.bak`, `inc/class-eq-form.bak`, `inc/class-lapki-admin.bak`, `inc/class-lapki-admin.2.bak`
 
 ---
 
@@ -51,31 +58,34 @@ server/                          # Node.js scaffold для Етапу 2 (Express
 
 | Компонент | Стан |
 |---|---|
-| REST API endpoints | ✅ Готово |
+| REST API endpoints (animals/organizations/media/attributes/applications/signup) | ✅ Готово |
 | Моделі (CRUD) | ✅ Готово |
 | Геопошук (Haversine) | ✅ Готово |
 | Медіа (upload + thumbnail) | ✅ Готово |
 | Атрибути/переклади | ✅ Готово |
-| Адмін-панель (список тварин) | ✅ Готово |
-| Адмін-панель (форма редагування тварини) | ✅ Готово (Leaflet карта, Dropzone фото) |
-| Адмін-панель (редактор атрибутів) | ✅ Готово (CRUD, фільтри, модалка) |
-| Адмін-панель (організації) | ❌ Заглушка `<p>Скоро буде...</p>` |
-| Пошук + пагінація в адмінці | ✅ Виправлено |
-| Авторизація на REST endpoints | ⚠️ Відключена (`__return_true`) |
-| Nonce/capability в формах | ⚠️ Закоментовані (`class-eq-form.php:352-360`) |
-| Міграції БД (CREATE TABLE при активації) | ❌ Відсутнє (`activate()` лише створює медіа-директорії) |
-| Seed дані | ❌ Відсутнє |
+| Ролі/capabilities (`lapki_shelter_admin`, `lapki_volunteer`) | ✅ Готово |
+| Авторизація на write-ендпоінтах REST API | ✅ Увімкнена (capability + ownership) |
+| CORS для публічного embed-віджета | ✅ Готово (`allow_embed_cors()`, лише GET animals/organizations) |
+| Публічна реєстрація (`POST /signup`) | ✅ Готово |
+| Міграції БД (`dbDelta()` при активації + авто-апгрейд) | ✅ Готово |
+| Seed дані атрибутів | ✅ Готово |
+| Адмін-панель (тварини, форма, атрибути, організації, налаштування) | ✅ Готово (**лише для `manage_options`** — `lapki_shelter_admin`/`lapki_volunteer` не мають доступу до wp-admin взагалі) |
+| Nonce/capability в `class-eq-form.php` | ⚠️ Клас ніде фактично не використовується (форми йдуть напряму через REST API + JS) |
 
 ## Стан фронтенду
 
 | Компонент | Стан |
 |---|---|
-| Адмін JS (lapki-admin.js) | ✅ Готово |
-| Адмін CSS (lapki-admin.css) | ✅ Готово |
-| Тема `themes/lapki/` (Bootstrap 5, header/footer, головна сторінка) | ✅ Готово |
-| Локатор шаблонів тема→плагін (`wc_get_template()`-аналог) | ❌ Тека `themes/lapki/lapki/` створена, функція не реалізована |
-| Сторінка однієї тварини / архів-пошук / сторінка організації | ❌ Відсутні |
-| Форма заявки на усиновлення | ❌ Відсутня |
+| Адмін JS/CSS (`lapki-admin.js/css`) | ✅ Готово |
+| Тема `themes/lapki/` (Bootstrap 5) | ✅ Готово (НЕ під git) |
+| Локатор шаблонів тема→плагін | ✅ Готово |
+| Архів/пошук тварин, картка тварини, список/картка організації | ✅ Готово |
+| Форма заявки на усиновлення | ✅ Готово (email-нотифікації) |
+| Фільтр міст на `/organizations/` | ✅ Готово (кольорові бокси, `?city=`) |
+| Публічна реєстрація `/signup/` | ✅ Готово (тимчасово доступна й залогіненим) |
+| Кабінет користувача `/cabinet/` | ✅ Готово, але **лише перегляд** — немає форми додавання/редагування тварини |
+| Embed-віджет `/js/animals.js` + `/widget-demo/` | ✅ Готово |
+| Публічна форма самостійного додавання тварини (`/add-animal/`) | ❌ Досі нікуди не веде |
 
 ---
 
@@ -89,31 +99,25 @@ server/                          # Node.js scaffold для Етапу 2 (Express
 6. ✅ Статус у формі залежав від БД — захардкоджено
 7. ✅ Пагінація в JS була заглушкою — реалізовано
 8. ✅ Підрахунок пагінації через `SELECT COUNT(*)` замість `LIMIT 999999`
+9. ✅ **(сесія 10)** `/organizations/{id}/` — заголовок кількості тварин рахував лише `adoptable` (`animals_count` з моделі), а сітка карток під ним рендерила всіх тварин незалежно від статусу → число не збігалось зі списком. Виправлено на `count($animals)`.
 
 ---
 
 ## Відомі проблеми / TODO
 
-Повний пріоритезований список — `.doc/todo.md`. Коротко:
-
-### 🔴 Критичні
-- [ ] Авторизація відключена на всіх REST endpoints (`__return_true`)
-- [ ] Форми: nonce та capability перевірки закоментовані в `class-eq-form.php:352-360`
-- [ ] Таблиці БД не створюються автоматично при активації плагіна
+Повний пріоритезований список — `.doc/todo.md`, повний Roadmap — `CLAUDE.md`. Коротко:
 
 ### 🟡 Важливі
-- [ ] Публічний фронтенд: є тільки тема + головна сторінка, немає сторінки тварини/пошуку/організації
-- [ ] Локатор шаблонів тема→плагін не реалізований
-- [ ] Сторінка «Організації» в адмінці — заглушка
-- [ ] Локалізація (.pot/.po/.mo) відсутня
-- [ ] Roles/capabilities (shelter_admin, volunteer, adopter) не реалізовані
-- [ ] `get_animal_types` — залежить від `entity_type = 'type'` в seed-даних
+- [ ] Кабінет користувача — тільки перегляд тварин, немає форми додавання/редагування з фронтенду
+- [ ] Адмін-панель доступна лише `manage_options` — щойно зареєстровані `lapki_shelter_admin`/`lapki_volunteer` не мають туди доступу (кабінет частково закриває цю прогалину, але без CRUD тварин)
+- [ ] Локалізація (.pot/.po/.mo) — покриття часткове (~40 рядків), решта хардкод українською
+- [ ] Wishlist, відео, історія прилаштувань, відгуки, соціальний шеринг — не реалізовано
 
 ### 🔵 Незначні
-- [ ] Немає seed-даних для тестування
+- [ ] `$type_labels` для типу організації неузгоджені між шаблонами: `archive-organizations.php`/`single-organization.php` не знають про `vet`/`volunteer` (з'явились у `[lapki_signup]`), усі троє мають легасі `rescue` (не використовується новою реєстрацією) — варто винести в одне спільне місце
 - [ ] Немає OpenAPI/Swagger документації
-- [x] PHPUnit тести для плагіна: `lapki_test` БД підключена, `tests/Test_Lapki_Animal.php` — 13 зелених тестів на `create()`/`get()`/`search()` (сесія 3, 2026-07-08; деталі в `CHANGELOG.md`)
-- [ ] Lazy loading зображень на фронтенді
+- [ ] Git не покриває тему й кореневий `js/animals.js` — окремий репозиторій ще не створено
+- [x] PHPUnit: `lapki_test` БД підключена, 87+ тестів (моделі + REST API авторизація), деталі в `CHANGELOG.md`
 
 ---
 
@@ -123,35 +127,35 @@ Base URL: `/wp-json/lapki/v1`
 
 | Метод | Endpoint | Опис |
 |---|---|---|
-| GET | `/animals` | Пошук з фільтрами |
+| GET | `/animals` | Пошук з фільтрами (CORS: `*`) |
 | GET | `/animals/{id}` | Деталі тварини |
 | POST | `/animals` | Створити тварину |
-| PUT | `/animals/{id}` | Оновити тварину |
-| DELETE | `/animals/{id}` | Видалити тварину |
+| PUT / DELETE | `/animals/{id}` | Оновити/видалити (власник або адмін) |
 | POST | `/animals/{id}/media` | Завантажити фото |
 | DELETE | `/media/{id}` | Видалити фото |
 | PUT | `/media/{id}/primary` | Встановити головне фото |
-| GET | `/types` | Всі типи тварин |
-| GET | `/types/all` | Глобальні атрибути (age/gender/size/coat) |
-| GET | `/types/{type}` | Атрибути конкретного типу |
-| GET | `/organizations` | Пошук організацій |
-| GET | `/organizations/{id}` | Деталі організації |
+| GET | `/types`, `/types/all`, `/types/{type}`, `/types/{type}/breeds` | Довідники |
+| GET | `/locations` | Автодоповнення міст |
+| GET | `/organizations` | Пошук організацій (CORS: `*`), підтримує `city` (точний збіг) |
+| GET | `/organizations/{id}` | Деталі організації (CORS: `*`) |
 | POST | `/organizations` | Створити організацію |
-| GET | `/attributes` | Список атрибутів (з фільтрами) |
-| POST | `/attributes` | Створити атрибут |
-| PUT | `/attributes/{id}` | Оновити атрибут |
-| DELETE | `/attributes/{id}` | Видалити атрибут |
-| GET | `/stats` | Статистика |
+| PUT / DELETE | `/organizations/{id}` | Оновити/видалити (власник або адмін) |
+| GET / POST | `/attributes` | Довідник атрибутів (write — лише адмін) |
+| PUT / DELETE | `/attributes/{id}` | Оновити/видалити атрибут |
+| POST | `/applications` | Заявка на усиновлення (публічний) |
+| GET | `/applications?organization_id=` | Власник організації або адмін |
+| PUT | `/applications/{id}` | Змінити статус заявки |
+| POST | `/signup` | ⭐ Публічна реєстрація (individual/shelter/vet_clinic/vet/volunteer) |
+| GET | `/stats` | Статистика тварин |
 
 ---
 
 ## Наступні кроки (Roadmap)
 
-1. Створити міграції БД (`dbDelta()` в `activate()` + seed-дані)
-2. Увімкнути авторизацію на REST endpoints і nonce/capability в формах
-3. Реалізувати локатор шаблонів тема→плагін
-4. Реалізувати сторінки фронтенду: тварина, архів/пошук, організація
-5. Довести сторінку «Організації» в адмінці до робочого стану
-6. Roles/capabilities, локалізація (uk/en)
+1. Форма додавання/редагування тварини з кабінету користувача (`/cabinet/?tab=animals`) — закриє основну прогалину self-service
+2. Синхронізувати `$type_labels` організацій між шаблонами (`vet`/`volunteer`/легасі `rescue`)
+3. Створити git-репозиторій для теми (`wp-content/themes/lapki/`) і/або кореневого `js/animals.js`, якщо потрібна історія змін
+4. Wishlist, відео, історія прилаштувань, відгуки, соціальний шеринг
+5. Повне покриття локалізації, OpenAPI/Swagger документація
 
-Детальніше — `.doc/todo.md`.
+Детальніше — `.doc/todo.md` і розділ Roadmap у `CLAUDE.md`.

@@ -34,8 +34,11 @@ lapki/
 ├── templates/                         # Публічні шаблони (дефолти; тема може перевизначити)
 │   ├── archive-animals.php            # /animals/ — пошук з фільтрами
 │   ├── single-animal.php              # /animals/{id}/ — картка тварини + форма заявки
-│   ├── archive-organizations.php      # /organizations/
+│   ├── archive-organizations.php      # /organizations/ — + рядок фільтрів-боксів по містах
 │   ├── single-organization.php        # /organizations/{id}/
+│   ├── shortcode-signup.php           # [lapki_signup] — публічна реєстрація (/signup/)
+│   ├── shortcode-cabinet.php          # [lapki_cabinet] — кабінет користувача (/cabinet/)
+│   ├── widget-demo.php                # /widget-demo/ — тестова сторінка для js/animals.js (не в меню)
 │   └── admin/                         # Порожньо (адмінка рендериться з class-lapki-admin.php)
 ├── css/lapki-admin.css                # Стилі адмін-панелі
 ├── js/lapki-admin.js                  # JS адмін-панелі (AJAX, форми, пагінація, організації)
@@ -48,8 +51,13 @@ lapki/
 
 wp-content/themes/lapki/               # Публічна тема (Bootstrap 5)
 ├── front-page.php, header.php, footer.php, 404.php, page.php
-├── assets/css/lapki.css, assets/js/lapki.js  # Виправлено під реальну форму відповіді REST API
+├── assets/css/lapki.css, assets/js/lapki.js  # Виправлено під реальну форму відповіді REST API;
+│                                              # тут же стилі/JS кабінету, форми реєстрації, фільтра міст
 └── lapki/                             # Тека перевизначення шаблонів плагіна (WooCommerce-подібний патерн)
+
+/var/www/lapki/js/animals.js           # Статичний embed-віджет карток тварин для СТОРОННІХ сайтів/блогів
+                                        # (поза WordPress, лежить у корені сайту — Apache віддає напряму,
+                                        # без завантаження wp-load.php; div. розділ «Embed-віджет» нижче)
 
 server/                                # Node.js scaffold для Етапу 2 — НЕ чіпати до завершення Етапу 1
 ```
@@ -245,9 +253,10 @@ THUMB_HEIGHT = 300
 Використовується формула Haversine для обчислення відстані між координатами.
 
 #### Lapki_Organization
-- `get($id)` - Отримати організацію (з кількістю тварин)
-- `search($params)` - Пошук організацій
+- `get($id)` - Отримати організацію (з кількістю **adoptable**-тварин у `animals_count` — не плутати з повною кількістю; на `/organizations/{id}/` заголовок рахує `count($animals)` окремо, див. виправлення нижче)
+- `search($params)` - Пошук організацій (підтримує `city` — точний збіг, для фільтра-боксів на `/organizations/`)
 - `create($data)` - Створити організацію
+- `get_cities_with_counts()` ⭐ NEW - Міста з кількістю організацій (для рядка кольорових фільтрів-боксів над списком `/organizations/`, стиль `.lapki-card__tag`)
 
 #### Lapki_Media
 - `get_by_entity($entity_type, $entity_id)` - Отримати медіафайли (з URL)
@@ -334,12 +343,23 @@ THUMB_HEIGHT = 300
 **PUT** `/wp-json/lapki/v1/applications/{id}`
 - Змінити статус (new/contacted/approved/rejected) — власник організації або адмін
 
+#### Signup Endpoint (публічна реєстрація) ⭐ NEW
+
+**POST** `/wp-json/lapki/v1/signup`
+- Публічний. Обов'язкові поля: `user_type` (`individual`/`shelter`/`vet_clinic`/`vet`/`volunteer`), `name`, `email`, `password` (мін. 6 символів)
+- Валідує тип/email/пароль, перевіряє унікальність email (`email_exists()`), генерує `user_login` з локальної частини email (дедуплікація через `username_exists()`)
+- Створює WP-користувача (`wp_insert_user`) + `Lapki_Organization` (`wp_user_id` → новий користувач, `type` = обраний тип), зберігає `lapki_user_type`/`lapki_phone` як user meta
+- Роль: `shelter`/`vet_clinic`/`vet` → `lapki_shelter_admin`; `individual`/`volunteer` → `lapki_volunteer` (організація створюється для **всіх** типів — `organization_id` обов'язковий для будь-якої тварини)
+- Автологін (`wp_set_auth_cookie`), відповідь містить `redirect` → `/cabinet/`
+
 #### Stats Endpoint
 
 **GET** `/wp-json/lapki/v1/stats`
 - Статистика тварин (загальна кількість, доступні, прилаштовані, собаки, коти)
 
 **🔒 Авторизація:** `GET`-endpoints лишаються публічними (це основна функція платформи — публічний пошук, як на petfinder.com). Всі write-операції (`POST`/`PUT`/`DELETE`) вимагають capability (`lapki_manage_animals` / `lapki_manage_organizations` / `lapki_manage_attributes`) і, де застосовно, перевірку власності організації — див. розділ «Безпека».
+
+**🌐 CORS:** `GET /animals` і `GET /organizations` (+ `/organizations/{id}`) відповідають з `Access-Control-Allow-Origin: *` (`Lapki_REST_API::allow_embed_cors()`, хук `rest_pre_serve_request`, пріоритет 20 — перекриває дефолтний `rest_send_cors_headers()` WP, який обмежує CORS тим самим origin). Потрібно для embed-віджета `js/animals.js`, що виконує `fetch()` зі сторонніх доменів. Інші (write) endpoints лишаються з дефолтною CORS-поведінкою WordPress.
 
 ---
 
@@ -439,7 +459,7 @@ $form->add_field(['id' => 'table_field', 'save_to' => 'table:custom_field']);
 
 **Capabilities:** `lapki_manage_animals`, `lapki_manage_organizations`, `lapki_manage_attributes` (останнє — лише адміністратор сайту).
 
-**Ролі:** `lapki_shelter_admin` (притулок: тварини + організація), `lapki_volunteer` (тільки тварини). Адміністратор сайту отримує всі три capability автоматично при активації/апгрейді.
+**Ролі:** `lapki_shelter_admin` (притулок/ветклініка/ветеринар: тварини + організація), `lapki_volunteer` (приватна особа/волонтер: тільки тварини). Адміністратор сайту отримує всі три capability автоматично при активації/апгрейді. Мапінг типу реєстрації → роль — див. `Lapki_REST_API::get_signup_types()`.
 
 `Lapki_Roles::user_owns_organization($organization_id, $wp_user_id)` — перевірка власності (або `manage_options`), використовується в permission callbacks REST API.
 
@@ -447,9 +467,35 @@ $form->add_field(['id' => 'table_field', 'save_to' => 'table:custom_field']);
 
 Аналог `wc_get_template()`: `Lapki_Template_Loader::locate('single-animal.php')` спочатку шукає `wp-content/themes/{активна тема}/lapki/single-animal.php`, і лише якщо не знайшов — підвантажує `plugins/lapki/templates/single-animal.php`.
 
-### 8. Фронтенд-роутинг (class-lapki-frontend.php) ⭐ NEW
+### 8. Фронтенд-роутинг і шорткоди (class-lapki-frontend.php) ⭐ NEW
 
-Rewrite rules: `/animals/`, `/animals/{id}/`, `/organizations/`, `/organizations/{id}/` → відповідні шаблони через `template_include`. Після зміни rewrite-правил потрібен `wp rewrite flush` (виконується автоматично при активації плагіна).
+**Rewrite rules:** `/animals/`, `/animals/{id}/`, `/organizations/`, `/organizations/{id}/`, `/widget-demo/` → відповідні шаблони через `template_include`. Після зміни rewrite-правил потрібен `wp rewrite flush` (виконується автоматично при активації плагіна; при ручному додаванні нового правила — виконати вручну одноразово).
+
+**Шорткоди:**
+- `[lapki_signup]` (`render_signup_shortcode()` → `templates/shortcode-signup.php`) — публічна форма реєстрації, розміщена на сторінці `/signup/`. Поля: тип (individual/shelter/vet_clinic/vet/volunteer), ім'я, назва організації (тільки для непри­ватних типів), email, пароль, телефон, місто. Сабміт іде через JS (`assets/js/lapki.js::initSignupForm()`) на `POST /wp-json/lapki/v1/signup`. **Тимчасово (на прохання)** форма показується навіть залогіненим користувачам (з попередженням, що реєстрація нового акаунта увійде під новим користувачем) — позначено коментарем `ТИМЧАСОВО` в шаблоні для легкого відкату.
+- `[lapki_cabinet]` (`render_cabinet_shortcode()` → `templates/shortcode-cabinet.php`) — особистий кабінет залогіненого користувача на сторінці `/cabinet/`, бокове меню:
+  - **Головна** (`?tab=home`, дефолт) — ім'я/email/телефон/тип користувача + картка організації (назва, тип, місто, контакти, бейдж верифікації, посилання на публічну сторінку)
+  - **Мої тварини** (`?tab=animals`) — усі тварини організації користувача (`Lapki_Animal::search(['organization_id' => ...])`, без фільтра статусу), фото + бейдж статусу, клік → публічна сторінка тварини. **Лише перегляд** — форми додавання/редагування тварини з кабінету ще немає (окрема задача, див. Roadmap)
+  - **Вихід** — `wp_logout_url()`
+  - Незалогінених користувачів шорткод перенаправляє на посилання увійти/зареєструватись замість кабінету
+  - Посилання «Кабінет» у шапці теми (`header.php`) показується лише залогіненим; `POST /signup` після успіху редиректить сюди
+
+**`/widget-demo/`** (`templates/widget-demo.php`) — тестова сторінка для embed-віджета `js/animals.js` (код для вставки + живий приклад у імітованому «чужому» блоці). **Навмисно не в меню.**
+
+### 9. Embed-віджет тварин притулку (`/var/www/lapki/js/animals.js`) ⭐ NEW
+
+Самодостатній vanilla JS-файл (без залежностей) для вставки на **сторонній** сайт/блог:
+
+```html
+<script src="https://lapki.help/js/animals.js?organization_id=1"></script>
+```
+
+- Лежить у **корені сайту** (`/var/www/lapki/js/`), а не в темі/плагіні — WP-рерайт (`RewriteCond %{REQUEST_FILENAME} !-f`) віддає його напряму через Apache, без завантаження `wp-load.php`
+- Параметри рядка запиту власного `<script src>`: `organization_id` (обов'язковий), `limit` (дефолт 24), `status` (дефолт `adoptable`) — читає через `document.currentScript` (з fallback-пошуком по `<script>` тегах, якщо `currentScript` недоступний)
+- Вставляє контейнер одразу після свого `<script>` тега, тягне дані з `GET /animals` + `GET /organizations/{id}` (публічного REST API), рендерить сітку карток (фото/кличка/тип/вік/місто) на всю ширину контейнера-батька (CSS Grid `auto-fill`)
+- Стилі ін'єктує сам у `<head>` один раз (перевірка на `#lapki-embed-styles`) під власними класами `lapki-embed-*` — **не залежить від CSS/Bootstrap хост-сайту**
+- Потребує CORS-виключення на бекенді (`allow_embed_cors()`, див. вище) — без нього fetch з чужого домену блокується браузером
+- **НЕ під git-контролем** — репозиторій плагіна (`wp-content/plugins/.git`) не покриває корінь сайту; зміни в цьому файлі не потрапляють у пуші на GitHub (аналогічно до теми, див. «Git status» нижче)
 
 ---
 
@@ -620,13 +666,23 @@ CREATE INDEX idx_animals_location ON wp_lapki_animals(latitude, longitude);
 - [x] **Локалізація:** `.pot` згенеровано, `uk`/`en_US` `.po`/`.mo` скомпільовано і перевірено — **але обгорнуто в `__()` лише ~40 рядків** (меню, помилки REST API, налаштування); адмін-HTML, фронтенд-шаблони і JS все ще хардкод українською
 - [x] **Тестування:** тестова БД `lapki_test` підключена, PHPUnit-оточення робоче (`phpunit/phpunit` зафіксовано на `^9.6` через несумісність `wp-phpunit` з PHPUnit 10). 53 тести / 120 assertions, всі проходять: `Test_Lapki_Animal.php` (create/get/search), `Test_Lapki_Organization.php` (create/get/update/delete/search + власність), `Test_Lapki_Media.php` (create/get/primary photo/delete), `Test_Lapki_Rest_Api.php` (авторизація write-endpoints `/animals` і `/organizations` — анонім/без capability/власник/чужа організація/адмін/volunteer). Модель `Lapki_Tag` і REST endpoints для медіа/атрибутів/заявок поки без тестів (сесія 3, 2026-07-08; деталі в `CHANGELOG.md`)
 
+#### Що зроблено (2026-07-11, сесії 6-10)
+- [x] **Публічна реєстрація:** сторінка `/signup/` + `[lapki_signup]`, `POST /wp-json/lapki/v1/signup` — 5 типів (приватна особа/притулок/ветклініка/ветеринар/волонтер) → роль + запис організації, автологін. Тимчасово доступна й залогіненим користувачам (позначено коментарем `ТИМЧАСОВО`)
+- [x] **Кабінет користувача:** сторінка `/cabinet/` + `[lapki_cabinet]` — Головна (профіль + організація), Мої тварини (перегляд, усі статуси), Вихід; посилання «Кабінет» у шапці для залогінених
+- [x] **Фільтр міст на `/organizations/`:** рядок кольорових боксів (стиль карток тварин), клік фільтрує організації за точним містом
+- [x] **Embed-віджет `js/animals.js`:** самодостатній JS без залежностей для вставки на сторонні сайти/блоги, + CORS-виключення для `GET /animals`/`/organizations`, + тестова сторінка `/widget-demo/` (не в меню)
+- [x] **Виправлено:** заголовок кількості тварин на `/organizations/{id}/` показував лише `adoptable`-тварин замість повного списку під ним
+- [x] **GitHub:** репозиторій `esiteq/lapki` запушено й зроблено публічним
+
 #### Що лишилось
 - [ ] Wishlist (список улюблених тварин)
 - [ ] Відео (завантаження й відображення)
 - [ ] Історія прилаштувань, відгуки про притулки, соціальний шеринг
-- [ ] Публічна frontend-форма самостійного додавання тварини (`/add-animal/` в темі поки нікуди не веде)
+- [ ] Публічна frontend-форма самостійного додавання/редагування тварини — досі немає навіть після появи кабінету (`/add-animal/` в темі нікуди не веде, «Мої тварини» в кабінеті — лише перегляд, без CRUD)
 - [ ] Backup/restore БД
 - [ ] Повне покриття локалізації (усі UI-рядки), OpenAPI/Swagger документація, User/Developer guide
+- [ ] **Дрібна неузгодженість:** масиви `$type_labels` для типу організації різняться між шаблонами — `archive-organizations.php`/`single-organization.php` не знають про типи `vet`/`volunteer` (з'явились у сесії 6), а всі троє мають легасі `rescue` (не використовується `[lapki_signup]`, лишився від старих демо-даних); організація типу `vet`/`volunteer` показуватиме на публічних сторінках сирий слаг замість перекладу — варто винести список типів в одне спільне місце
+- [ ] **Git-покриття:** репозиторій плагіна (`wp-content/plugins/.git`) не покриває ні тему (`wp-content/themes/lapki/`), ні кореневий `js/animals.js` — зміни там не потрапляють у пуші на GitHub, поки для них не створено окремий репозиторій
 - [x] Запустити PHPUnit (тестова БД `lapki_test` надана, базовий тест-сьют для `Lapki_Animal` готовий і зелений; інші моделі/REST API поки без тестів)
 
 Детальний, пріоритезований план дій і повний список того, що зроблено в останній сесії — див. `.doc/todo.md`.
@@ -666,25 +722,30 @@ CREATE INDEX idx_animals_location ON wp_lapki_animals(latitude, longitude);
 
 ## 📝 Git status
 
-Репозиторій знаходиться на рівень вище — `wp-content/plugins/.git` (не в корені `/var/www/lapki`).
+Репозиторій знаходиться на рівень вище — `wp-content/plugins/.git` (не в корені `/var/www/lapki`), відстежує лише вміст `lapki/` (плагін). Публічний на GitHub: **https://github.com/esiteq/lapki** (зроблено публічним і перевірено 2026-07-11 — доступний без авторизації через API/raw/`git clone`).
+
+**⚠️ Не покрито git взагалі:**
+- `wp-content/themes/lapki/` (публічна тема) — окремого репозиторію немає
+- `/var/www/lapki/js/animals.js` (embed-віджет) — лежить у корені сайту, поза `wp-content/plugins`
+
+Зміни в цих двох місцях (а це вся тема: `header.php`, `functions.php`, `assets/css/lapki.css`, `assets/js/lapki.js`, + сам `animals.js`) **не потрапляють** у пуші на GitHub, доки для них не буде створено окремий репозиторій/submodule.
 
 **Поточна гілка:** `master`
 
-**Незакомічені зміни (станом на 2026-07-07):**
-- Modified: `class-lapki-admin.php`, `class-lapki-models.php`, `class-lapki-rest-api.php`, `lapki.php`, `css/index.php`, `inc/index.php`, `js/index.php`, `templates/index.php`
-- Deleted: `inc/class-lapki-cache.php`
-- Untracked: `.claude/`, `.doc/migrations/`, `.doc/todo.md`, `CHANGELOG.md`, `CLAUDE.md`, `README.md`, `css/lapki-admin.css`, `js/lapki-admin.js`
+**Останній запушений коміт (2026-07-11, сесія 8):** `2650931` — "Add DB migrations, roles/auth, public frontend, signup and user cabinet" (squash-коміт сесій 2-8, до пуша репозиторій довго стояв не закомічений).
+
+**Незакомічені зміни станом на сесію 10 (2026-07-11, після пуша):**
+- Modified: `CHANGELOG.md`, `inc/class-lapki-frontend.php`, `inc/class-lapki-rest-api.php`, `templates/single-organization.php`
+- Untracked: `templates/widget-demo.php`
+- Тобто: CORS-виключення для embed-віджета, rewrite-правило `/widget-demo/`, і виправлення лічильника тварин на `/organizations/{id}/` — усе з сесій 9-10 — **ще не запушено**.
 
 **Останні коміти:**
 ```
+2650931 Add DB migrations, roles/auth, public frontend, signup and user cabinet
 ff6e176 Update class-lapki-admin.php
 df19659 sql
 49b4649 cache
 9ed2420 Update lapki.php
-df3ca7b update
-c15331b sql & form
-4e9c6c2 second commit
-68a1b06 Create class-eq-form.php
 ```
 
 ---
@@ -756,6 +817,6 @@ https://www.gnu.org/licenses/gpl-2.0.html
 ---
 
 **Документація створена:** 2025-10-08
-**Востаннє оновлена:** 2026-07-07 (сесія 2 — безпека, БД-міграції, фронтенд, заявки, налаштування, локалізація)
-**Версія документації:** 1.2
-**Для плагіна версії:** 2.0.0
+**Востаннє оновлена:** 2026-07-11 (сесії 6-10 — публічна реєстрація, кабінет користувача, фільтр міст, embed-віджет + CORS, виправлення лічильника тварин)
+**Версія документації:** 1.3
+**Для плагіна версії:** 2.0.0 (`LAPKI_VERSION` константа в `lapki.php` — 2.0.10; версії docblock/константи розійшлись, не виправлялось)

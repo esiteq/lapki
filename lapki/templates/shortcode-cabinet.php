@@ -95,13 +95,13 @@ if ($tab === 'animals' && $organization) {
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h2 class="h5 fw-bold mb-0"><?php echo esc_html($organization['name']); ?></h2>
                             <?php if (!empty($organization['is_verified'])) : ?>
-                                <span class="badge bg-success">✓ Верифіковано</span>
+                                <span class="badge bg-success"><i class="fas fa-check-circle"></i> Верифіковано</span>
                             <?php endif; ?>
                         </div>
                         <p class="text-muted mb-2"><?php echo esc_html($type_labels[$organization['type']] ?? $organization['type']); ?></p>
-                        <?php if (!empty($organization['city'])) : ?><p class="mb-1">📍 <?php echo esc_html($organization['city']); ?></p><?php endif; ?>
-                        <?php if (!empty($organization['phone'])) : ?><p class="mb-1">☎ <?php echo esc_html($organization['phone']); ?></p><?php endif; ?>
-                        <?php if (!empty($organization['email'])) : ?><p class="mb-1">✉ <?php echo esc_html($organization['email']); ?></p><?php endif; ?>
+                        <?php if (!empty($organization['city'])) : ?><p class="mb-1"><i class="fas fa-map-marker-alt"></i> <?php echo esc_html($organization['city']); ?></p><?php endif; ?>
+                        <?php if (!empty($organization['phone'])) : ?><p class="mb-1"><i class="fas fa-phone"></i> <?php echo esc_html($organization['phone']); ?></p><?php endif; ?>
+                        <?php if (!empty($organization['email'])) : ?><p class="mb-1"><i class="fas fa-envelope"></i> <?php echo esc_html($organization['email']); ?></p><?php endif; ?>
                         <p class="mb-0 mt-2">
                             <a href="<?php echo esc_url(home_url('/organizations/' . (int) $organization['id'] . '/')); ?>" class="lapki-link-green">
                                 Переглянути публічну сторінку →
@@ -129,7 +129,7 @@ if ($tab === 'animals' && $organization) {
                                 <?php if ($photo_url) : ?>
                                     <img src="<?php echo esc_url($photo_url); ?>" class="card-img-top" style="aspect-ratio:4/3;object-fit:cover;" alt="<?php echo esc_attr($animal['name']); ?>">
                                 <?php else : ?>
-                                    <div class="d-flex align-items-center justify-content-center bg-light" style="aspect-ratio:4/3;font-size:2.5rem;">🐾</div>
+                                    <div class="d-flex align-items-center justify-content-center bg-light text-muted" style="aspect-ratio:4/3;font-size:2.5rem;"><i class="fas fa-paw"></i></div>
                                 <?php endif; ?>
                                 <div class="card-body">
                                     <h3 class="h6 fw-bold mb-1"><?php echo esc_html($animal['name']); ?></h3>

@@ -43,7 +43,7 @@ $animals = Lapki_Animal::search(['organization_id' => $organization['id'], 'stat
         <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
             <h1 class="fw-bold mb-0"><?php echo esc_html($organization['name']); ?></h1>
             <?php if (!empty($organization['is_verified'])) : ?>
-                <span class="badge bg-success">Верифіковано</span>
+                <span class="badge bg-success"><i class="fas fa-check-circle"></i> Верифіковано</span>
             <?php endif; ?>
         </div>
 
@@ -55,16 +55,16 @@ $animals = Lapki_Animal::search(['organization_id' => $organization['id'], 'stat
                     <div class="card-body">
                         <h2 class="h6 fw-bold mb-3">Контакти</h2>
                         <?php if (!empty($organization['email'])) : ?>
-                            <p class="small mb-2">✉️ <a href="mailto:<?php echo esc_attr($organization['email']); ?>"><?php echo esc_html($organization['email']); ?></a></p>
+                            <p class="small mb-2"><i class="fas fa-envelope"></i> <a href="mailto:<?php echo esc_attr($organization['email']); ?>"><?php echo esc_html($organization['email']); ?></a></p>
                         <?php endif; ?>
                         <?php if (!empty($organization['phone'])) : ?>
-                            <p class="small mb-2">📞 <?php echo esc_html($organization['phone']); ?></p>
+                            <p class="small mb-2"><i class="fas fa-phone"></i> <?php echo esc_html($organization['phone']); ?></p>
                         <?php endif; ?>
                         <?php if (!empty($organization['website'])) : ?>
-                            <p class="small mb-2">🌐 <a href="<?php echo esc_url($organization['website']); ?>" target="_blank" rel="noopener">Сайт організації</a></p>
+                            <p class="small mb-2"><i class="fas fa-globe"></i> <a href="<?php echo esc_url($organization['website']); ?>" target="_blank" rel="noopener">Сайт організації</a></p>
                         <?php endif; ?>
                         <?php if (!empty($organization['city'])) : ?>
-                            <p class="small mb-0">📍 <?php echo esc_html($organization['city']); ?><?php echo !empty($organization['state']) ? ', ' . esc_html($organization['state']) : ''; ?></p>
+                            <p class="small mb-0"><i class="fas fa-map-marker-alt"></i> <?php echo esc_html($organization['city']); ?><?php echo !empty($organization['state']) ? ', ' . esc_html($organization['state']) : ''; ?></p>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -89,7 +89,7 @@ $animals = Lapki_Animal::search(['organization_id' => $organization['id'], 'stat
             </div>
 
             <div class="col-lg-8">
-                <h2 class="h5 fw-bold mb-4">Тварини цієї організації (<?php echo (int) $organization['animals_count']; ?>)</h2>
+                <h2 class="h5 fw-bold mb-4">Тварини цієї організації (<?php echo count($animals); ?>)</h2>
                 <div class="row g-4">
                     <?php if (empty($animals)) : ?>
                         <p class="text-muted">Наразі немає тварин на прилаштування.</p>
@@ -102,7 +102,7 @@ $animals = Lapki_Animal::search(['organization_id' => $organization['id'], 'stat
                                     <?php if ($photo_url) : ?>
                                         <img src="<?php echo esc_url($photo_url); ?>" alt="<?php echo esc_attr($animal['name']); ?>" loading="lazy">
                                     <?php else : ?>
-                                        <div style="width:100%;height:100%;background:#e8e8e8;display:flex;align-items:center;justify-content:center;font-size:3rem">🐾</div>
+                                        <div class="text-muted" style="width:100%;height:100%;background:#e8e8e8;display:flex;align-items:center;justify-content:center;font-size:3rem"><i class="fas fa-paw"></i></div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="lapki-card__body">

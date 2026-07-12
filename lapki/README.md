@@ -1,103 +1,158 @@
-# Lapki - Платформа пошуку та прилаштування тварин
+# Lapki — платформа пошуку та прилаштування тварин
 
-WordPress плагін для управління базою тварин, інспірований petfinder.com, локалізований для України.
+WordPress плагін + публічна тема для управління базою тварин, притулків і волонтерів, інспірований petfinder.com, локалізований для України.
+
+Детальна архітектурна документація — [CLAUDE.md](CLAUDE.md). Історія змін по сесіях розробки — [CHANGELOG.md](CHANGELOG.md).
 
 ## Опис
 
-Платформа пошуку та прилаштування собак, котів, птахів та інших тварин з притулків. Підтримує повний цикл управління тваринами, організаціями та медіафайлами через REST API.
+Платформа пошуку та прилаштування собак, котів, птахів та інших тварин з притулків. Притулки, ветклініки, ветеринари, волонтери й приватні особи можуть самостійно зареєструватись, вести профіль організації через REST API та (поки лише на перегляд) стежити за своїми тваринами в особистому кабінеті. Публічний фронтенд (архів/пошук тварин, сторінки організацій, картка тварини з формою заявки на усиновлення) працює незалежно від адмін-панелі WordPress.
 
 ## Особливості
 
-- 🐕 Управління тваринами (собаки, коти, птахи, рептилії, дрібні тварини, коні)
-- 🏢 Управління організаціями-притулками
-- 📸 Галерея зображень з можливістю завантаження, видалення та встановлення головного фото
-- 🗺️ Інтеграція з OpenStreetMap для геолокації
-- 🌍 Підтримка мультимовності (українська, англійська)
+- 🐕 Управління тваринами (собаки, коти, птахи, кролики та інші)
+- 🏢 Управління організаціями: притулок, ветклініка, окремий ветеринар, волонтер, приватна особа
+- 📸 Галерея зображень з upload/thumbnail (300×300px), встановлення головного фото
+- 🗺️ Геолокація: OpenStreetMap + Leaflet.js в адмінці, геопошук за формулою Haversine в REST API
+- 👤 Публічна реєстрація (`/signup/`) + особистий кабінет користувача (`/cabinet/`)
+- 📝 Форма заявки на усиновлення з email-нотифікаціями
+- 🧩 Embed-віджет (`/js/animals.js`) — картки тварин притулку для вставки на сторонній сайт/блог
+- 🔒 Ролі й capabilities (`lapki_shelter_admin`, `lapki_volunteer`), авторизація write-ендпоінтів REST API
+- 🌍 Часткова підтримка мультимовності (українська, англійська)
 - 🔌 REST API для всіх операцій
-- 📱 Адаптивний інтерфейс адмін-панелі
+- 📱 Адаптивний інтерфейс (Bootstrap 5 — публічна тема; власна адмін-панель)
 
 ## Технічний стек
 
-- PHP 7.4+
-- WordPress 5.0+
-- REST API
-- JavaScript (jQuery)
-- OpenStreetMap + Leaflet.js
-- Dropzone.js для завантаження файлів
+- PHP 7.4+, WordPress 5.0+
+- MySQL/MariaDB, схема через `dbDelta()`-міграції з авто-апгрейдом
+- REST API (namespace `lapki/v1`)
+- Публічна тема на Bootstrap 5 + vanilla JS (без jQuery на фронтенді)
+- Leaflet.js + OpenStreetMap Nominatim, Dropzone.js — в адмін-панелі
+- PHPUnit (тестова БД `lapki_test`)
 
 ## Структура
 
 ```
 lapki/
+├── lapki.php                          # Головний файл плагіна (Lapki_Main)
 ├── inc/
-│   ├── class-lapki-admin.php      # Адмін-панель (тільки HTML)
-│   ├── class-lapki-rest-api.php   # REST API endpoints
-│   ├── class-lapki-models.php     # Моделі даних
-│   └── class-eq-form.php          # Форм-білдер
-├── js/
-│   └── lapki-admin.js             # JavaScript для адмін-панелі (всі запити через API)
-├── css/
-│   └── lapki-admin.css            # Стилі адмін-панелі
-├── templates/                      # Шаблони для frontend
-└── lapki.php                      # Головний файл плагіну
+│   ├── class-lapki-models.php         # Моделі: Animal, Organization, Media, Attributes, Tag, Application
+│   ├── class-lapki-rest-api.php       # REST API endpoints (namespace lapki/v1) + signup + embed CORS
+│   ├── class-lapki-admin.php          # Адмін-панель (тварини, організації, атрибути, налаштування)
+│   ├── class-lapki-roles.php          # Ролі та capabilities
+│   ├── class-lapki-migrations.php     # dbDelta()-міграції + seed-дані
+│   ├── class-lapki-template-loader.php # Локатор шаблонів (тема → плагін)
+│   ├── class-lapki-frontend.php       # Rewrite rules, роутинг фронтенду, шорткоди [lapki_signup]/[lapki_cabinet]
+│   └── data/seed-attributes.sql       # Забандлений довідник атрибутів
+├── templates/                          # Публічні шаблони (тема може перевизначити в themes/{тема}/lapki/)
+│   ├── archive-animals.php            # /animals/ — пошук з фільтрами
+│   ├── single-animal.php              # /animals/{id}/ — картка тварини + форма заявки
+│   ├── archive-organizations.php      # /organizations/ — + фільтр міст (кольорові бокси)
+│   ├── single-organization.php        # /organizations/{id}/
+│   ├── shortcode-signup.php           # [lapki_signup] — /signup/
+│   ├── shortcode-cabinet.php          # [lapki_cabinet] — /cabinet/
+│   └── widget-demo.php                # /widget-demo/ — демо embed-віджета (не в меню)
+├── css/lapki-admin.css, js/lapki-admin.js  # Адмін-панель
+├── languages/                          # lapki.pot, uk/en_US .po/.mo (часткове покриття)
+├── tests/                              # PHPUnit (моделі + REST API авторизація)
+└── CHANGELOG.md, CLAUDE.md
+
+wp-content/themes/lapki/                # Публічна тема (Bootstrap 5) — ОКРЕМИЙ від git-репозиторію плагіна
+├── header.php, footer.php, front-page.php, page.php, 404.php
+└── assets/css/lapki.css, assets/js/lapki.js   # Кабінет, реєстрація, фільтр міст, картки тварин
+
+/var/www/lapki/js/animals.js            # Embed-віджет — поза WP, у корені сайту, теж не під git
 ```
+
+## Публічні сторінки
+
+| URL | Опис |
+|---|---|
+| `/animals/` | Архів/пошук тварин з фільтрами (тип, вік, притулок, місто, кличка) |
+| `/animals/{id}/` | Картка тварини + форма заявки на усиновлення |
+| `/organizations/` | Список організацій + фільтр за містом |
+| `/organizations/{id}/` | Картка організації зі списком її тварин |
+| `/signup/` | Реєстрація: приватна особа / притулок / ветклініка / ветеринар / волонтер |
+| `/cabinet/` | Особистий кабінет: профіль, мої тварини (перегляд), вихід |
+| `/widget-demo/` | Демонстрація embed-скрипта (не в меню) |
 
 ## REST API Endpoints
 
-### Тварини (Animals)
-- `GET /wp-json/lapki/v1/animals` - Список тварин з фільтрами
-- `GET /wp-json/lapki/v1/animals/{id}` - Отримати тварину
-- `POST /wp-json/lapki/v1/animals` - Створити тварину
-- `PUT /wp-json/lapki/v1/animals/{id}` - Оновити тварину
-- `DELETE /wp-json/lapki/v1/animals/{id}` - Видалити тварину
+Base URL: `/wp-json/lapki/v1`
 
-### Медіафайли (Media)
-- `POST /wp-json/lapki/v1/animals/{id}/media` - Завантажити фото
-- `DELETE /wp-json/lapki/v1/media/{id}` - Видалити фото
-- `PUT /wp-json/lapki/v1/media/{id}/primary` - Встановити головним
+### Тварини (Animals)
+- `GET /animals` — пошук з фільтрами (тип, вік, стать, розмір, статус, місто, геопошук тощо)
+- `GET /animals/{id}` — картка тварини (з медіа й тегами)
+- `POST /animals` — створити (capability `lapki_manage_animals`)
+- `PUT /animals/{id}` / `DELETE /animals/{id}` — власник організації або адмін
 
 ### Організації (Organizations)
-- `GET /wp-json/lapki/v1/organizations` - Список організацій
-- `GET /wp-json/lapki/v1/organizations/{id}` - Отримати організацію
-- `POST /wp-json/lapki/v1/organizations` - Створити організацію
-- `PUT /wp-json/lapki/v1/organizations/{id}` - Оновити організацію
-- `DELETE /wp-json/lapki/v1/organizations/{id}` - Видалити організацію
+- `GET /organizations` — пошук (name/type/city/state/location/verified_only)
+- `GET /organizations/{id}` — картка організації
+- `POST /organizations` — створити (capability `lapki_manage_organizations`)
+- `PUT /organizations/{id}` / `DELETE /organizations/{id}` — власник або адмін
 
-### Довідники (Attributes)
-- `GET /wp-json/lapki/v1/types` - Типи тварин
-- `GET /wp-json/lapki/v1/types/{type}` - Атрибути для типу
-- `GET /wp-json/lapki/v1/types/{type}/breeds` - Породи для типу
+### Довідники (Types/Attributes)
+- `GET /types`, `GET /types/all`, `GET /types/{type}`, `GET /types/{type}/breeds`
+- `GET /attributes`, `POST /attributes`, `PUT /attributes/{id}`, `DELETE /attributes/{id}` (тільки адмін)
+
+### Медіа
+- `POST /animals/{id}/media`, `DELETE /media/{id}`, `PUT /media/{id}/primary`
+
+### Заявки на усиновлення (Applications)
+- `POST /applications` — публічний (як контактна форма)
+- `GET /applications?organization_id=` — власник організації або адмін
+- `PUT /applications/{id}` — зміна статусу
+
+### Реєстрація
+- `POST /signup` — публічна реєстрація нового користувача + організації (детально в [CLAUDE.md](CLAUDE.md))
+
+### Інше
+- `GET /locations` — автодоповнення міст
+- `GET /stats` — загальна статистика тварин
+
+**Авторизація:** усі `GET` — публічні. Write-операції вимагають capability + (де застосовно) перевірку власності організації.
+**CORS:** `GET /animals` і `GET /organizations` віддають `Access-Control-Allow-Origin: *` (потрібно для embed-віджета); решта ендпоінтів — дефолтна CORS-поведінка WordPress.
+
+## Ролі
+
+- `lapki_shelter_admin` — притулок / ветклініка / окремий ветеринар: `lapki_manage_animals` + `lapki_manage_organizations`
+- `lapki_volunteer` — приватна особа / волонтер: тільки `lapki_manage_animals`
+- Адміністратор сайту отримує всі capability (включно з `lapki_manage_attributes`, лише для нього)
+
+## Embed-віджет
+
+Показати картки тварин конкретного притулку на сторонньому сайті чи в блозі:
+
+```html
+<script src="https://lapki.help/js/animals.js?organization_id=1"></script>
+```
+
+Необов'язкові параметри: `limit` (дефолт 24), `status` (дефолт `adoptable`). Скрипт самодостатній (без залежностей), стилі й розмітку ін'єктує сам, на всю ширину контейнера. Демо — `/widget-demo/`.
 
 ## Структура БД
 
-### Основні таблиці
-- `wp_lapki_animals` - Тварини
-- `wp_lapki_organizations` - Організації
-- `wp_lapki_media` - Медіафайли
-- `wp_lapki_attributes` - Довідники (типи, породи, кольори, тощо)
-- `wp_lapki_tags` - Теги
+- `wp_lapki_animals` — тварини
+- `wp_lapki_organizations` — організації (притулок/ветклініка/ветеринар/волонтер/приватна особа)
+- `wp_lapki_media` — медіафайли (`file_path` зберігає лише назву файлу; URL генерується динамічно)
+- `wp_lapki_attributes` — довідник перекладів/атрибутів
+- `wp_lapki_tags` — теги тварин
+- `wp_lapki_applications` — заявки на усиновлення
 
-### Медіафайли
-Зображення зберігаються в `/wp-content/uploads/lapki/`:
-- `images/` - Оригінальні зображення
-- `thumbnails/` - Мініатюри 300x300px
+Усі таблиці створюються автоматично через `dbDelta()` при активації плагіна, з авто-апгрейдом схеми для вже активних сайтів (без потреби деактивувати/активувати плагін).
+
+Зображення зберігаються в `/wp-content/uploads/lapki/` (`images/` — оригінали, `thumbnails/` — 300×300px).
 
 ## Установка
 
 1. Завантажити плагін в `/wp-content/plugins/lapki/`
-2. Активувати в адмін-панелі WordPress
-3. Плагін автоматично створить необхідні таблиці та директорії
+2. Активувати в адмін-панелі WordPress — автоматично створить таблиці, ролі, медіа-директорії й виконає `flush_rewrite_rules()`
+3. Активувати тему `wp-content/themes/lapki/` для публічного фронтенду
 
-## Використання
+## Тестування
 
-### Адмін-панель
-- Меню: **Lapki** → **Тварини**
-- Додавання/редагування тварин через форму
-- Управління зображеннями через drag & drop
-- Геолокація через OpenStreetMap
-
-### Frontend
-Шаблони для відображення тварин знаходяться в `templates/`
+PHPUnit, тестова БД `lapki_test`, `phpunit/phpunit` зафіксовано на `^9.6` (несумісність `wp-phpunit` з PHPUnit 10). Покриття: моделі (Animal/Organization/Media/Tag/Attributes), авторизація write-ендпоінтів REST API. Деталі — [CLAUDE.md](CLAUDE.md#тестування) і [CHANGELOG.md](CHANGELOG.md).
 
 ## Розробка
 
@@ -114,81 +169,30 @@ INSERT INTO wp_lapki_attributes (entity, entity_type, attr_name, attr_value, att
 VALUES ('animal', 'dog', 'color', 'black', 'Чорний', 'uk');
 ```
 
-## Changelog
+## Відомі обмеження
 
-### 2.0.9 - 2025-10-08
+- Кабінет користувача (`/cabinet/`) поки дозволяє лише переглядати своїх тварин — форми додавання/редагування з фронтенду ще немає
+- Git-репозиторій плагіна не покриває тему (`wp-content/themes/lapki/`) і кореневий `js/animals.js` — зміни там не потрапляють у пуші на GitHub
+- Повний список — розділ Roadmap у [CLAUDE.md](CLAUDE.md)
+
+## Історія змін
+
+Докладний лог по сесіях розробки — [CHANGELOG.md](CHANGELOG.md).
+
+### 2.0.9 — 2025-10-08
 
 #### Додано
-- **Галерея зображень** з Dropzone.js
-  - Завантаження зображень через drag & drop
-  - Автоматичне створення thumbnails 300x300px
-  - Збільшення фото в модальному вікні
-  - Встановлення головного фото
-  - Видалення зображень без збереження форми
-- **OpenStreetMap інтеграція**
-  - Інтерактивна карта з Leaflet.js
-  - Геокодування через Nominatim API
-  - Вибір локації кліком на карті
-  - Автооновлення координат
-- **REST API для медіа**
-  - `POST /animals/{id}/media` - завантаження фото
-  - `DELETE /media/{id}` - видалення фото
-  - `PUT /media/{id}/primary` - встановлення головного фото
-- **Методи класу Lapki_Media**
-  - `get($id)` - отримання медіафайлу
-  - `create($data)` - створення медіафайлу
-  - `set_primary($id)` - встановлення головного (автоматично скидає інші)
-  - `ensure_primary($entity_type, $entity_id)` - автопризначення першого фото
-  - `get_next_sort_order()` - отримання наступного порядку
-  - `has_primary()` - перевірка наявності головного фото
+- Галерея зображень з Dropzone.js (drag & drop, thumbnails, модалка, головне фото)
+- OpenStreetMap інтеграція (Leaflet.js, геокодування через Nominatim)
+- REST API для медіа (`POST /animals/{id}/media`, `DELETE /media/{id}`, `PUT /media/{id}/primary`)
 
 #### Виправлено
-- **Форма редагування тварини**
-  - Виправлено завантаження значень з БД (послідовне завантаження опцій → дані)
-  - Видалено дублююче поле "species"
-  - Поля блокуються під час завантаження динамічних даних
-- **Селекти атрибутів**
-  - Колір, порода - змінено з текстових полів на динамічні селекти
-  - Завантаження атрибутів залежно від обраного типу тварини
-  - Виправлено відображення перекладів (ukr замість технічних кодів)
-- **Головне зображення**
-  - При видаленні головного фото автоматично призначається наступне
-  - При завантаженні сторінки перше фото стає головним якщо не задано
-  - Перше завантажене фото автоматично стає головним
-  - Видалено проблемний унікальний ключ `unique_primary` з БД
-  - Виправлено конвертацію `is_primary` в boolean для JavaScript
-- **База даних**
-  - Додано атрибути віку (baby, young, adult, senior)
-  - Додано статуси (adoptable, adopted, found)
-  - Додано атрибути шерсті для entity_type='all'
-  - Виправлено SQL запит `get_animal_types()` (повертав entity_type замість attr_value)
-- **Налаштування WordPress**
-  - Увімкнено WP_DEBUG_LOG
-  - Вимкнено WP_DEBUG_DISPLAY
+- Форма редагування тварини (послідовне завантаження опцій → дані, прибрано дубль поля "species")
+- Селекти атрибутів (колір/порода) — динамічні замість текстових полів
+- Головне зображення — автопризначення при видаленні/першому завантаженні
 
-#### Оптимізовано
-- **Архітектура**
-  - Всі операції з БД через REST API (видалено прямі запити з адмін-панелі)
-  - Логіка роботи з медіа винесена в методи класу `Lapki_Media`
-  - REST API використовує методи моделей замість прямих `$wpdb` запитів
-- **UX адмін-панелі**
-  - Додано індикатор завантаження для форми
-  - Поля форми неактивні під час завантаження даних
-  - Координати latitude/longitude readonly (оновлюються автоматично)
-- **Медіа**
-  - Автоматична інкрементація `sort_order` при завантаженні
-  - Централізована логіка управління головним фото
-
-#### Технічні зміни
-- Виправлено метод `Lapki_Media::create()` (видалено дублікат, виправлено формати)
-- Додано консольне логування для відлагодження (видалено після тестування)
-- Використання `array_merge()` замість `wp_parse_args()` для асоціативних масивів
-
-### 2.0.0 - Попередні версії
-- Базова функціональність плагіну
-- REST API endpoints для тварин та організацій
-- Адмін-панель для управління
-- Система атрибутів та довідників
+### 2.0.0 — Попередні версії
+- Базова функціональність плагіну, REST API endpoints, адмін-панель, атрибути/довідники
 
 ## Автор
 

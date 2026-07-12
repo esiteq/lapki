@@ -27,11 +27,13 @@ if (!defined('ABSPATH')) {
                     <option value="vet">Окремий ветеринар</option>
                     <option value="volunteer">Волонтер</option>
                 </select>
+                <div class="invalid-feedback">Будь ласка, оберіть тип реєстрації.</div>
             </div>
 
             <div class="col-12">
                 <label class="form-label">Ваше ім'я *</label>
                 <input type="text" name="name" class="form-control" required>
+                <div class="invalid-feedback">Будь ласка, вкажіть ваше ім'я.</div>
             </div>
 
             <div class="col-12 d-none" id="lapki-signup-org-wrap">
@@ -42,10 +44,12 @@ if (!defined('ABSPATH')) {
             <div class="col-md-6">
                 <label class="form-label">Email *</label>
                 <input type="email" name="email" class="form-control" required>
+                <div class="invalid-feedback">Вкажіть коректний email.</div>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Пароль *</label>
                 <input type="password" name="password" class="form-control" minlength="6" required>
+                <div class="invalid-feedback">Пароль має містити щонайменше 6 символів.</div>
             </div>
 
             <div class="col-md-6">
@@ -59,7 +63,7 @@ if (!defined('ABSPATH')) {
 
             <div class="col-12">
                 <div id="lapki-signup-alert" class="alert d-none" role="alert"></div>
-                <button type="submit" class="btn lapki-btn-orange w-100">Зареєструватися</button>
+                <button type="submit" class="btn btn-warning w-100">Зареєструватися</button>
             </div>
         </form>
 </div>

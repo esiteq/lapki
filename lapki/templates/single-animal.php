@@ -27,6 +27,7 @@ if (!$animal) {
 get_header();
 
 $type_labels   = ['dog' => 'Собака', 'cat' => 'Кіт', 'bird' => 'Птах', 'rabbit' => 'Кролик', 'other' => 'Інше'];
+$type_icons    = ['dog' => 'fa-dog', 'cat' => 'fa-cat', 'bird' => 'fa-dove', 'rabbit' => 'fa-paw', 'other' => 'fa-paw'];
 $age_labels    = ['baby' => 'Малюк', 'young' => 'Молодий', 'adult' => 'Дорослий', 'senior' => 'Похилого віку'];
 $gender_labels = ['male' => 'Самець', 'female' => 'Самка', 'unknown' => 'Невідомо'];
 $size_labels   = ['small' => 'Малий', 'medium' => 'Середній', 'large' => 'Великий', 'xlarge' => 'Дуже великий'];
@@ -49,7 +50,7 @@ $main_photo = !empty($photos[0]['url']) ? $photos[0]['url'] : '';
                         <?php if ($main_photo) : ?>
                             <img id="lapki-gallery-main-img" src="<?php echo esc_url($main_photo); ?>" alt="<?php echo esc_attr($animal['name']); ?>" class="img-fluid rounded-4 w-100" style="aspect-ratio:4/3;object-fit:cover;">
                         <?php else : ?>
-                            <div class="rounded-4 w-100 d-flex align-items-center justify-content-center bg-light" style="aspect-ratio:4/3;font-size:4rem;">🐾</div>
+                            <div class="rounded-4 w-100 d-flex align-items-center justify-content-center bg-light text-muted" style="aspect-ratio:4/3;font-size:4rem;"><i class="fas fa-paw"></i></div>
                         <?php endif; ?>
                     </div>
                     <?php if (count($photos) > 1) : ?>
@@ -69,14 +70,14 @@ $main_photo = !empty($photos[0]['url']) ? $photos[0]['url'] : '';
             <div class="col-lg-6">
                 <h1 class="fw-bold mb-2"><?php echo esc_html($animal['name']); ?></h1>
                 <div class="d-flex flex-wrap gap-2 mb-3">
-                    <span class="lapki-card__tag"><?php echo esc_html($type_labels[$animal['type']] ?? $animal['type']); ?></span>
+                    <span class="lapki-card__tag"><i class="fas <?php echo esc_attr($type_icons[$animal['type']] ?? 'fa-paw'); ?>"></i> <?php echo esc_html($type_labels[$animal['type']] ?? $animal['type']); ?></span>
                     <?php if (!empty($animal['age'])) : ?><span class="lapki-card__tag"><?php echo esc_html($age_labels[$animal['age']] ?? $animal['age']); ?></span><?php endif; ?>
                     <?php if (!empty($animal['gender'])) : ?><span class="lapki-card__tag"><?php echo esc_html($gender_labels[$animal['gender']] ?? $animal['gender']); ?></span><?php endif; ?>
                     <?php if (!empty($animal['size'])) : ?><span class="lapki-card__tag"><?php echo esc_html($size_labels[$animal['size']] ?? $animal['size']); ?></span><?php endif; ?>
                 </div>
 
                 <?php if (!empty($animal['address_city'])) : ?>
-                <p class="text-muted mb-3">📍 <?php echo esc_html($animal['address_city']); ?><?php echo !empty($animal['address_state']) ? ', ' . esc_html($animal['address_state']) : ''; ?></p>
+                <p class="text-muted mb-3"><i class="fas fa-map-marker-alt"></i> <?php echo esc_html($animal['address_city']); ?><?php echo !empty($animal['address_state']) ? ', ' . esc_html($animal['address_state']) : ''; ?></p>
                 <?php endif; ?>
 
                 <?php if (!empty($animal['description'])) : ?>
@@ -99,7 +100,7 @@ $main_photo = !empty($photos[0]['url']) ? $photos[0]['url'] : '';
                         $yes = (bool) $animal[$key];
                         ?>
                         <div class="col-6">
-                            <span class="small"><?php echo $yes ? '✅' : '❌'; ?> <?php echo esc_html($label); ?></span>
+                            <span class="small"><i class="fas <?php echo $yes ? 'fa-check text-success' : 'fa-times text-danger'; ?>"></i> <?php echo esc_html($label); ?></span>
                         </div>
                     <?php endforeach; ?>
                 </div>

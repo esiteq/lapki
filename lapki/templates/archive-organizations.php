@@ -70,12 +70,12 @@ $pin_svg = '<svg class="lapki-pin-icon" viewBox="0 0 24 24" width="12" height="1
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h2 class="h6 fw-bold mb-0"><?php echo esc_html($org['name']); ?></h2>
                                 <?php if (!empty($org['is_verified'])) : ?>
-                                    <span class="badge bg-success">✓</span>
+                                    <span class="badge bg-success"><i class="fas fa-check"></i></span>
                                 <?php endif; ?>
                             </div>
                             <p class="small text-muted mb-2"><?php echo esc_html($type_labels[$org['type']] ?? $org['type']); ?></p>
                             <?php if (!empty($org['city'])) : ?>
-                                <p class="small text-muted mb-2">📍 <?php echo esc_html($org['city']); ?></p>
+                                <p class="small text-muted mb-2"><i class="fas fa-map-marker-alt"></i> <?php echo esc_html($org['city']); ?></p>
                             <?php endif; ?>
                             <p class="small mb-0"><?php echo (int) $org['animals_count']; ?> тварин на прилаштування</p>
                         </div>

@@ -11,6 +11,27 @@ class Lapki_REST_API {
     
     public static function init() {
         add_action('rest_api_init', [__CLASS__, 'register_routes']);
+        add_filter('rest_pre_serve_request', [__CLASS__, 'allow_embed_cors'], 20, 3);
+    }
+
+    /**
+     * Дозволяє крос-доменний доступ (CORS) лише для публічних GET-ендпоінтів
+     * тварин/організацій — потрібно для віджета вбудовування (js/animals.js),
+     * який виконує fetch() з довільного стороннього сайту. Дефолтна поведінка
+     * WP (`rest_send_cors_headers`) дозволяє лише той самий origin, тож для
+     * зовнішніх сайтів запит інакше блокується браузером.
+     */
+    public static function allow_embed_cors($served, $result, $request) {
+        if ($request->get_method() !== 'GET') {
+            return $served;
+        }
+
+        $route = $request->get_route();
+        if (strpos($route, '/lapki/v1/animals') === 0 || strpos($route, '/lapki/v1/organizations') === 0) {
+            header('Access-Control-Allow-Origin: *');
+        }
+
+        return $served;
     }
     
     public static function register_routes() {
