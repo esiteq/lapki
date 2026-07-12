@@ -18,7 +18,6 @@ class Lapki_Frontend {
         add_filter('query_vars', [__CLASS__, 'add_query_vars']);
         add_filter('template_include', [__CLASS__, 'template_include']);
         add_shortcode('lapki_signup', [__CLASS__, 'render_signup_shortcode']);
-        add_shortcode('lapki_cabinet', [__CLASS__, 'render_cabinet_shortcode']);
     }
 
     public static function add_rewrite_rules() {
@@ -27,6 +26,7 @@ class Lapki_Frontend {
         add_rewrite_rule('^organizations/?$', 'index.php?lapki_page=organizations_archive', 'top');
         add_rewrite_rule('^organizations/([0-9]+)/?$', 'index.php?lapki_page=organization_single&lapki_org_id=$matches[1]', 'top');
         add_rewrite_rule('^widget-demo/?$', 'index.php?lapki_page=widget_demo', 'top');
+        add_rewrite_rule('^profile/?$', 'index.php?lapki_page=profile', 'top');
     }
 
     public static function add_query_vars($vars) {
@@ -49,6 +49,7 @@ class Lapki_Frontend {
             'organizations_archive' => 'archive-organizations.php',
             'organization_single' => 'single-organization.php',
             'widget_demo' => 'widget-demo.php',
+            'profile' => 'profile.php',
         ];
 
         if (empty($map[$page])) {
@@ -87,16 +88,6 @@ class Lapki_Frontend {
     public static function render_signup_shortcode() {
         ob_start();
         include LAPKI_PLUGIN_DIR . 'templates/shortcode-signup.php';
-        return ob_get_clean();
-    }
-
-    /**
-     * Шорткод [lapki_cabinet] — особистий кабінет користувача:
-     * Головна (інформація про користувача/організацію), Мої тварини, Вихід.
-     */
-    public static function render_cabinet_shortcode() {
-        ob_start();
-        include LAPKI_PLUGIN_DIR . 'templates/shortcode-cabinet.php';
         return ob_get_clean();
     }
 }

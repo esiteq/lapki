@@ -1371,7 +1371,7 @@ class Lapki_REST_API {
         return new WP_REST_Response([
             'success' => true,
             'user_id' => $user_id,
-            'redirect' => home_url('/cabinet/'),
+            'redirect' => home_url('/profile/'),
         ], 201);
     }
 
