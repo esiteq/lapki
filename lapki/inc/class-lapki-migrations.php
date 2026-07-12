@@ -19,7 +19,7 @@ class Lapki_Migrations {
      * тоді maybe_migrate() автоматично перезапустить dbDelta() навіть
      * без деактивації/активації плагіна (для вже встановлених сайтів).
      */
-    const DB_VERSION = '2.1.0';
+    const DB_VERSION = '2.2.0';
 
     /**
      * Викликати на init/plugins_loaded — виконує міграцію лише якщо
@@ -78,6 +78,7 @@ class Lapki_Migrations {
   declawed tinyint(1) DEFAULT NULL,
   special_needs tinyint(1) DEFAULT NULL,
   shots_current tinyint(1) DEFAULT NULL,
+  from_war_zone tinyint(1) DEFAULT NULL,
   good_with_children tinyint(1) DEFAULT NULL,
   good_with_dogs tinyint(1) DEFAULT NULL,
   good_with_cats tinyint(1) DEFAULT NULL,

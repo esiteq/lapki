@@ -648,6 +648,10 @@ class Lapki_Admin
                         <th><label for="special_needs">Особливі потреби</label></th>
                         <td><input type="checkbox" id="special_needs" name="special_needs" value="1"></td>
                     </tr>
+                    <tr>
+                        <th><label for="from_war_zone">З зони бойових дій</label></th>
+                        <td><input type="checkbox" id="from_war_zone" name="from_war_zone" value="1"></td>
+                    </tr>
                 </table>
 
                 <h2>Сумісність</h2>

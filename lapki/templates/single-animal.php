@@ -94,6 +94,7 @@ $main_photo = !empty($photos[0]['url']) ? $photos[0]['url'] : '';
                         'good_with_dogs' => 'Добре з собаками',
                         'good_with_cats' => 'Добре з котами',
                         'special_needs' => 'Особливі потреби',
+                        'from_war_zone' => 'З зони бойових дій',
                     ];
                     foreach ($compat as $key => $label) :
                         if (!isset($animal[$key]) || $animal[$key] === null || $animal[$key] === '') continue;
