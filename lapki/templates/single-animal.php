@@ -73,16 +73,28 @@ $donate_organization = !empty($animal['organization_id']) ? Lapki_Organization::
 
             <div class="col-lg-6">
                 <h1 class="fw-bold mb-2"><?php echo esc_html($animal['name']); ?></h1>
+
+                <?php
+                // Обов'язкові "на видноті" характеристики: вік, стать, місто,
+                // стерилізована, вакцинована, розмір (+ тип — вже був тут раніше)
+                $spayed_set = isset($animal['spayed_neutered']) && $animal['spayed_neutered'] !== null && $animal['spayed_neutered'] !== '';
+                $shots_set  = isset($animal['shots_current']) && $animal['shots_current'] !== null && $animal['shots_current'] !== '';
+                ?>
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     <span class="lapki-card__tag"><i class="fas <?php echo esc_attr($type_icons[$animal['type']] ?? 'fa-paw'); ?>"></i> <?php echo esc_html($type_labels[$animal['type']] ?? $animal['type']); ?></span>
-                    <?php if (!empty($animal['age'])) : ?><span class="lapki-card__tag"><?php echo esc_html($age_labels[$animal['age']] ?? $animal['age']); ?></span><?php endif; ?>
-                    <?php if (!empty($animal['gender'])) : ?><span class="lapki-card__tag"><?php echo esc_html($gender_labels[$animal['gender']] ?? $animal['gender']); ?></span><?php endif; ?>
-                    <?php if (!empty($animal['size'])) : ?><span class="lapki-card__tag"><?php echo esc_html($size_labels[$animal['size']] ?? $animal['size']); ?></span><?php endif; ?>
+                    <?php if (!empty($animal['age'])) : ?><span class="lapki-card__tag lapki-card__tag--age"><?php echo esc_html($age_labels[$animal['age']] ?? $animal['age']); ?></span><?php endif; ?>
+                    <?php if (!empty($animal['gender'])) : ?><span class="lapki-card__tag lapki-card__tag--gender"><?php echo esc_html($gender_labels[$animal['gender']] ?? $animal['gender']); ?></span><?php endif; ?>
+                    <?php if (!empty($animal['address_city'])) : ?>
+                        <span class="lapki-card__tag lapki-card__tag--location"><i class="fas fa-map-marker-alt"></i> <?php echo esc_html($animal['address_city']); ?><?php echo !empty($animal['address_state']) ? ', ' . esc_html($animal['address_state']) : ''; ?></span>
+                    <?php endif; ?>
+                    <?php if ($spayed_set) : $yes = (bool) $animal['spayed_neutered']; ?>
+                        <span class="lapki-card__tag lapki-card__tag--<?php echo $yes ? 'yes' : 'no'; ?>"><i class="fas <?php echo $yes ? 'fa-check' : 'fa-times'; ?>"></i> <?php echo $yes ? 'Стерилізована' : 'Не стерилізована'; ?></span>
+                    <?php endif; ?>
+                    <?php if ($shots_set) : $yes = (bool) $animal['shots_current']; ?>
+                        <span class="lapki-card__tag lapki-card__tag--<?php echo $yes ? 'yes' : 'no'; ?>"><i class="fas <?php echo $yes ? 'fa-check' : 'fa-times'; ?>"></i> <?php echo $yes ? 'Вакцинована' : 'Не вакцинована'; ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($animal['size'])) : ?><span class="lapki-card__tag lapki-card__tag--size"><?php echo esc_html($size_labels[$animal['size']] ?? $animal['size']); ?></span><?php endif; ?>
                 </div>
-
-                <?php if (!empty($animal['address_city'])) : ?>
-                <p class="text-muted mb-3"><i class="fas fa-map-marker-alt"></i> <?php echo esc_html($animal['address_city']); ?><?php echo !empty($animal['address_state']) ? ', ' . esc_html($animal['address_state']) : ''; ?></p>
-                <?php endif; ?>
 
                 <?php if (!empty($animal['description'])) : ?>
                 <p class="mb-4"><?php echo nl2br(esc_html($animal['description'])); ?></p>
@@ -91,9 +103,7 @@ $donate_organization = !empty($animal['organization_id']) ? Lapki_Organization::
                 <div class="row g-2 mb-4">
                     <?php
                     $compat = [
-                        'spayed_neutered' => 'Стерилізована/кастрований',
                         'house_trained' => 'Привчена до туалету',
-                        'shots_current' => 'Щеплення зроблено',
                         'good_with_children' => 'Добре з дітьми',
                         'good_with_dogs' => 'Добре з собаками',
                         'good_with_cats' => 'Добре з котами',
