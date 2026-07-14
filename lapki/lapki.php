@@ -40,6 +40,9 @@ require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-template-loader.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-frontend.php';
 Lapki_Frontend::init();
 
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-sitemaps.php';
+Lapki_Sitemaps::init();
+
 if (is_admin()) {
     require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-admin.php';
     Lapki_Admin::init();

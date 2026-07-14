@@ -18,6 +18,15 @@ class Lapki_Frontend {
         add_filter('query_vars', [__CLASS__, 'add_query_vars']);
         add_filter('template_include', [__CLASS__, 'template_include']);
         add_shortcode('lapki_signup', [__CLASS__, 'render_signup_shortcode']);
+
+        // SEO: кастомні route'и (не справжні WP-записи) інакше показують
+        // однакову дефолтну назву сайту й жодного meta description
+        add_filter('pre_get_document_title', [__CLASS__, 'filter_document_title']);
+        add_action('wp_head', [__CLASS__, 'output_meta_description'], 1);
+        add_filter('wp_robots', [__CLASS__, 'filter_wp_robots']);
+
+        // Приховати архів автора (світить логін адміна, немає цінності для пошуку)
+        add_action('template_redirect', [__CLASS__, 'maybe_redirect_author_archive']);
     }
 
     public static function add_rewrite_rules() {
@@ -91,5 +100,127 @@ class Lapki_Frontend {
         ob_start();
         include LAPKI_PLUGIN_DIR . 'templates/shortcode-signup.php';
         return ob_get_clean();
+    }
+
+    /**
+     * Унікальна <title> для кожного кастомного route'у — без цього
+     * wp_get_document_title() не має за що зачепитись (це не справжні
+     * WP-записи) і завжди повертає лише назву сайту для всіх них.
+     */
+    public static function filter_document_title($title) {
+        $page = get_query_var('lapki_page');
+
+        if (!$page) {
+            return $title;
+        }
+
+        $site_name = get_bloginfo('name');
+
+        switch ($page) {
+            case 'animals_archive':
+                return 'Тварини, що шукають дім — ' . $site_name;
+
+            case 'animal_single':
+                $animal = Lapki_Animal::get(self::get_current_animal_id());
+                if (!$animal) {
+                    return $title;
+                }
+                $type_labels = ['dog' => 'собака', 'cat' => 'кіт', 'bird' => 'птах', 'rabbit' => 'кролик'];
+                $bits = array_filter([
+                    $animal['name'],
+                    $type_labels[$animal['type']] ?? '',
+                    $animal['address_city'] ?? '',
+                ]);
+                return implode(', ', $bits) . ' — шукає дім | ' . $site_name;
+
+            case 'organizations_archive':
+                return 'Притулки та організації — ' . $site_name;
+
+            case 'organization_single':
+                $organization = Lapki_Organization::get(self::get_current_organization_id());
+                return $organization ? $organization['name'] . ' | ' . $site_name : $title;
+
+            case 'donate':
+                return 'Підтримати грошима — ' . $site_name;
+
+            case 'profile':
+                return 'Особистий кабінет — ' . $site_name;
+
+            case 'widget_demo':
+                return 'Демонстрація embed-віджета — ' . $site_name;
+        }
+
+        return $title;
+    }
+
+    /**
+     * <meta name="description"> для кастомних route'ів — на сайті немає
+     * SEO-плагіна, а без цього тегу жодна сторінка його взагалі не має.
+     */
+    public static function output_meta_description() {
+        $page = get_query_var('lapki_page');
+        $description = '';
+
+        switch ($page) {
+            case 'animals_archive':
+                $description = 'Пошук собак, котів та інших тварин з притулків України, які шукають дім.';
+                break;
+
+            case 'animal_single':
+                $animal = Lapki_Animal::get(self::get_current_animal_id());
+                if ($animal) {
+                    $description = !empty($animal['description'])
+                        ? wp_trim_words(wp_strip_all_tags($animal['description']), 30)
+                        : sprintf("%s шукає дім. Дізнайтесь більше — можливо, саме ви станете новою родиною.", $animal['name']);
+                }
+                break;
+
+            case 'organizations_archive':
+                $description = 'Притулки, ветклініки та волонтерські організації, які допомагають тваринам знайти дім.';
+                break;
+
+            case 'organization_single':
+                $organization = Lapki_Organization::get(self::get_current_organization_id());
+                if ($organization) {
+                    $description = !empty($organization['mission_statement'])
+                        ? wp_trim_words(wp_strip_all_tags($organization['mission_statement']), 30)
+                        : sprintf('%s — притулок/організація на платформі Lapki.', $organization['name']);
+                }
+                break;
+
+            case 'donate':
+                $description = 'Підтримайте притулок, волонтера або конкретну тварину — оберіть спосіб допомогти грошима.';
+                break;
+        }
+
+        if ($description) {
+            echo '<meta name="description" content="' . esc_attr($description) . '">' . "\n";
+        }
+    }
+
+    /**
+     * noindex для сторінок без цінності в пошуку: приватний кабінет
+     * (анонімний краулер бачить лише запрошення увійти) і тестова
+     * сторінка embed-віджета (навмисно не в меню).
+     */
+    public static function filter_wp_robots($robots) {
+        $page = get_query_var('lapki_page');
+
+        if (in_array($page, ['profile', 'widget_demo'], true)) {
+            $robots['noindex'] = true;
+        }
+
+        return $robots;
+    }
+
+    /**
+     * Архів автора (/author/{login}/) світить логін адміна й не несе
+     * цінності для пошуку на не-блоговому сайті — редиректимо на головну.
+     */
+    public static function maybe_redirect_author_archive() {
+        if (is_author()) {
+            wp_safe_redirect(home_url('/'), 301);
+            exit;
+        }
     }
 }
