@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [Unreleased] — 2026-07-14 (сесія 24)
+
+### Нова функція — відновлено дзеркало lapki.esiteq.com + canonical для кастомних route'ів
+
+- **Інфраструктура (Apache, поза git — див. нижче):** відновлено доступ до `https://lapki.esiteq.com` як дзеркала `lapki.help`. DNS для `lapki.esiteq.com` й далі вказував напряму на цей сервер (194.28.182.219, без Cloudflare-проксі — на відміну від `lapki.help`, який іде через Cloudflare). Стара конфігурація Apache (`lapki.conf`/`lapki-le-ssl.conf`) 10 липня була **переписана** на `lapki.help` (не додана поруч) — тож `lapki.esiteq.com` лишився зовсім без vhost і без SSL-сертифіката (старий сертифікат теж було прибрано). Відновлено:
+  - Новий vhost `/etc/apache2/sites-available/lapki-esiteq.conf` — той самий `DocumentRoot /var/www/lapki`, за тим самим патерном, що й `lapki.help`
+  - `certbot --apache -d lapki.esiteq.com` — новий Let's Encrypt сертифікат (дійсний до 2026-10-12), автоматично згенеровано `lapki-esiteq-le-ssl.conf` + HTTP→HTTPS редирект (`--redirect`)
+  - Перевірено: `apache2ctl configtest` перед кожним reload, інші ~20 непов'язаних сайтів на цьому сервері (esiteq.com, bergvikenshus, protectimus тощо) лишились доступні після `systemctl reload apache2`
+- **Код (цей git-репозиторій): `class-lapki-frontend.php::output_canonical_url()`** ⭐ NEW — виявлено під час перевірки дзеркала: кастомні route'и (`/animals/{id}/`, `/organizations/{id}/`, архіви, `/donate/`) взагалі не мали `<link rel="canonical">` (WordPress-івський `rel_canonical()` працює лише для справжніх singular/archive об'єктів, не для наших query-var-based route'ів). Без цього дзеркало на іншому домені індексувалось би як дублікат контенту саме для тих сторінок (тварини/організації), над індексацією яких щойно попрацювали в сесії 23. `home_url()` завжди резолвиться в `lapki.help` (опція `siteurl`/`home`) незалежно від того, через який домен прийшов запит — тож canonical коректний і на дзеркалі, і на самому `lapki.help`.
+- Перевірено: `http://lapki.esiteq.com` → 301 на `https://`, HTTPS повертає 200 з тим самим контентом, SSL-сертифікат виданий на правильний домен; canonical-теги на дзеркалі для тварин/організацій/архівів/донату коректно вказують на `lapki.help`; для справжніх WP-сторінок (`/signup/`) canonical і так уже працював коректно (перевірено окремо) — стосувалось лише кастомних route'ів.
+
 ## [Unreleased] — 2026-07-12 (сесія 23)
 
 ### Нова функція — повна індексованість сайту (SEO-аудит)

@@ -23,6 +23,7 @@ class Lapki_Frontend {
         // однакову дефолтну назву сайту й жодного meta description
         add_filter('pre_get_document_title', [__CLASS__, 'filter_document_title']);
         add_action('wp_head', [__CLASS__, 'output_meta_description'], 1);
+        add_action('wp_head', [__CLASS__, 'output_canonical_url'], 1);
         add_filter('wp_robots', [__CLASS__, 'filter_wp_robots']);
 
         // Приховати архів автора (світить логін адміна, немає цінності для пошуку)
@@ -195,6 +196,48 @@ class Lapki_Frontend {
 
         if ($description) {
             echo '<meta name="description" content="' . esc_attr($description) . '">' . "\n";
+        }
+    }
+
+    /**
+     * <link rel="canonical"> для кастомних route'ів — без цього WordPress
+     * (rel_canonical(), який працює лише для справжніх singular/archive
+     * об'єктів) взагалі не виводить canonical для цих сторінок. Критично
+     * для дзеркала lapki.esiteq.com → без canonical кожна тварина/організація
+     * індексувалась би як дублікат під двома доменами; home_url() завжди
+     * резолвиться в canonical-домен (опція siteurl/home = lapki.help)
+     * незалежно від Host-заголовка запиту.
+     */
+    public static function output_canonical_url() {
+        $page = get_query_var('lapki_page');
+        $url = '';
+
+        switch ($page) {
+            case 'animals_archive':
+                $url = home_url('/animals/');
+                break;
+
+            case 'animal_single':
+                $id = self::get_current_animal_id();
+                $url = $id ? home_url('/animals/' . $id . '/') : '';
+                break;
+
+            case 'organizations_archive':
+                $url = home_url('/organizations/');
+                break;
+
+            case 'organization_single':
+                $id = self::get_current_organization_id();
+                $url = $id ? home_url('/organizations/' . $id . '/') : '';
+                break;
+
+            case 'donate':
+                $url = home_url('/donate/');
+                break;
+        }
+
+        if ($url) {
+            echo '<link rel="canonical" href="' . esc_url($url) . '">' . "\n";
         }
     }
 
