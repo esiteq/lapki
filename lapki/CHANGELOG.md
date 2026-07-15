@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [Unreleased] — 2026-07-14 (сесія 25)
+
+### Нова функція — Open Graph / Twitter Card для сторінок тварин (і не тільки)
+
+- **`class-lapki-frontend.php::output_open_graph_tags()`** ⭐ NEW — `og:type`, `og:site_name`, `og:locale`, `og:url`, `og:title`, `og:description`, `og:image` (+ `:secure_url`/`:width`/`:height`/`:alt`), `twitter:card`/`title`/`description`/`image`. Для `/animals/{id}/` — реальне фото тварини (не thumbnail, оригінал, з коректними розмірами) + заголовок "Ім'я, тип, місто — шукає дім" + опис тварини. Для `/organizations/{id}/`, `/animals/`, `/organizations/`, `/donate/` — той самий текстовий контент, що й у `<title>`/meta description, з фото організації (якщо є) або лого сайту як фолбек. На `/profile/`/`/widget-demo/` (і так уже noindex) OG не виводиться взагалі.
+  - Зображення завжди примусово `https` через `set_url_scheme()` — опція `siteurl` сайту зараз `http://`, а соцмережі (Facebook/Telegram/Twitter) ігнорують `http`-зображення в OG-тегах.
+- **Рефакторинг**: винесено спільні `get_page_description()` і `get_page_canonical_url()` (раніше логіка дублювалась між `output_meta_description()`/`output_canonical_url()`, тепер OG використовує ті самі методи — один опис/URL на сторінку, не три різні). Додано кешування `Lapki_Animal::get()`/`Lapki_Organization::get()` на запит (`get_current_animal_data()`/`get_current_organization_data()`, статичний масив-кеш) — раніше title/description/canonical кожен окремо смикали ту саму модель повторним SQL-запитом.
+- Перевірено вручну на `https://lapki.help/animals/41/`: усі теги на місці, фото 750×750 з правильним `alt`, заголовок і опис читабельні; на `/organizations/2/` (без завантаженого фото) і на архівних сторінках коректно спрацював фолбек на лого сайту (`logo.png`, 800×500, теж роздається 200); на `/profile/` OG-тегів немає (очікувано).
+
 ## [Unreleased] — 2026-07-14 (сесія 24)
 
 ### Нова функція — відновлено дзеркало lapki.esiteq.com + canonical для кастомних route'ів

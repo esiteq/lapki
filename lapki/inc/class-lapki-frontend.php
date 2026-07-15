@@ -24,6 +24,7 @@ class Lapki_Frontend {
         add_filter('pre_get_document_title', [__CLASS__, 'filter_document_title']);
         add_action('wp_head', [__CLASS__, 'output_meta_description'], 1);
         add_action('wp_head', [__CLASS__, 'output_canonical_url'], 1);
+        add_action('wp_head', [__CLASS__, 'output_open_graph_tags'], 1);
         add_filter('wp_robots', [__CLASS__, 'filter_wp_robots']);
 
         // Приховати архів автора (світить логін адміна, немає цінності для пошуку)
@@ -94,6 +95,43 @@ class Lapki_Frontend {
     }
 
     /**
+     * Дані поточної тварини — кешовані на запит (title/description/canonical/OG
+     * усі хуки wp_head інакше окремо смикали б Lapki_Animal::get() кожен)
+     */
+    private static function get_current_animal_data() {
+        static $cache = [];
+        $id = self::get_current_animal_id();
+
+        if (!$id) {
+            return null;
+        }
+
+        if (!array_key_exists($id, $cache)) {
+            $cache[$id] = Lapki_Animal::get($id);
+        }
+
+        return $cache[$id];
+    }
+
+    /**
+     * Дані поточної організації — так само кешовані на запит
+     */
+    private static function get_current_organization_data() {
+        static $cache = [];
+        $id = self::get_current_organization_id();
+
+        if (!$id) {
+            return null;
+        }
+
+        if (!array_key_exists($id, $cache)) {
+            $cache[$id] = Lapki_Organization::get($id);
+        }
+
+        return $cache[$id];
+    }
+
+    /**
      * Шорткод [lapki_signup] — форма реєстрації нового користувача
      * (приватна особа, притулок, ветклініка, ветеринар, волонтер).
      */
@@ -122,7 +160,7 @@ class Lapki_Frontend {
                 return 'Тварини, що шукають дім — ' . $site_name;
 
             case 'animal_single':
-                $animal = Lapki_Animal::get(self::get_current_animal_id());
+                $animal = self::get_current_animal_data();
                 if (!$animal) {
                     return $title;
                 }
@@ -138,7 +176,7 @@ class Lapki_Frontend {
                 return 'Притулки та організації — ' . $site_name;
 
             case 'organization_single':
-                $organization = Lapki_Organization::get(self::get_current_organization_id());
+                $organization = self::get_current_organization_data();
                 return $organization ? $organization['name'] . ' | ' . $site_name : $title;
 
             case 'donate':
@@ -155,44 +193,50 @@ class Lapki_Frontend {
     }
 
     /**
+     * Опис поточного route'у — спільний для <meta description> і og:description
+     * /twitter:description, щоб не дублювати цю логіку в трьох місцях.
+     */
+    private static function get_page_description() {
+        $page = get_query_var('lapki_page');
+
+        switch ($page) {
+            case 'animals_archive':
+                return 'Пошук собак, котів та інших тварин з притулків України, які шукають дім.';
+
+            case 'animal_single':
+                $animal = self::get_current_animal_data();
+                if (!$animal) {
+                    return '';
+                }
+                return !empty($animal['description'])
+                    ? wp_trim_words(wp_strip_all_tags($animal['description']), 30)
+                    : sprintf("%s шукає дім. Дізнайтесь більше — можливо, саме ви станете новою родиною.", $animal['name']);
+
+            case 'organizations_archive':
+                return 'Притулки, ветклініки та волонтерські організації, які допомагають тваринам знайти дім.';
+
+            case 'organization_single':
+                $organization = self::get_current_organization_data();
+                if (!$organization) {
+                    return '';
+                }
+                return !empty($organization['mission_statement'])
+                    ? wp_trim_words(wp_strip_all_tags($organization['mission_statement']), 30)
+                    : sprintf('%s — притулок/організація на платформі Lapki.', $organization['name']);
+
+            case 'donate':
+                return 'Підтримайте притулок, волонтера або конкретну тварину — оберіть спосіб допомогти грошима.';
+        }
+
+        return '';
+    }
+
+    /**
      * <meta name="description"> для кастомних route'ів — на сайті немає
      * SEO-плагіна, а без цього тегу жодна сторінка його взагалі не має.
      */
     public static function output_meta_description() {
-        $page = get_query_var('lapki_page');
-        $description = '';
-
-        switch ($page) {
-            case 'animals_archive':
-                $description = 'Пошук собак, котів та інших тварин з притулків України, які шукають дім.';
-                break;
-
-            case 'animal_single':
-                $animal = Lapki_Animal::get(self::get_current_animal_id());
-                if ($animal) {
-                    $description = !empty($animal['description'])
-                        ? wp_trim_words(wp_strip_all_tags($animal['description']), 30)
-                        : sprintf("%s шукає дім. Дізнайтесь більше — можливо, саме ви станете новою родиною.", $animal['name']);
-                }
-                break;
-
-            case 'organizations_archive':
-                $description = 'Притулки, ветклініки та волонтерські організації, які допомагають тваринам знайти дім.';
-                break;
-
-            case 'organization_single':
-                $organization = Lapki_Organization::get(self::get_current_organization_id());
-                if ($organization) {
-                    $description = !empty($organization['mission_statement'])
-                        ? wp_trim_words(wp_strip_all_tags($organization['mission_statement']), 30)
-                        : sprintf('%s — притулок/організація на платформі Lapki.', $organization['name']);
-                }
-                break;
-
-            case 'donate':
-                $description = 'Підтримайте притулок, волонтера або конкретну тварину — оберіть спосіб допомогти грошима.';
-                break;
-        }
+        $description = self::get_page_description();
 
         if ($description) {
             echo '<meta name="description" content="' . esc_attr($description) . '">' . "\n";
@@ -209,36 +253,168 @@ class Lapki_Frontend {
      * незалежно від Host-заголовка запиту.
      */
     public static function output_canonical_url() {
-        $page = get_query_var('lapki_page');
-        $url = '';
-
-        switch ($page) {
-            case 'animals_archive':
-                $url = home_url('/animals/');
-                break;
-
-            case 'animal_single':
-                $id = self::get_current_animal_id();
-                $url = $id ? home_url('/animals/' . $id . '/') : '';
-                break;
-
-            case 'organizations_archive':
-                $url = home_url('/organizations/');
-                break;
-
-            case 'organization_single':
-                $id = self::get_current_organization_id();
-                $url = $id ? home_url('/organizations/' . $id . '/') : '';
-                break;
-
-            case 'donate':
-                $url = home_url('/donate/');
-                break;
-        }
+        $url = self::get_page_canonical_url();
 
         if ($url) {
             echo '<link rel="canonical" href="' . esc_url($url) . '">' . "\n";
         }
+    }
+
+    /**
+     * Канонічний URL поточного route'у — спільний для <link rel="canonical">
+     * і og:url (обидва мають вказувати на те саме, canonical-домен lapki.help).
+     */
+    private static function get_page_canonical_url() {
+        $page = get_query_var('lapki_page');
+
+        switch ($page) {
+            case 'animals_archive':
+                return home_url('/animals/');
+
+            case 'animal_single':
+                $id = self::get_current_animal_id();
+                return $id ? home_url('/animals/' . $id . '/') : '';
+
+            case 'organizations_archive':
+                return home_url('/organizations/');
+
+            case 'organization_single':
+                $id = self::get_current_organization_id();
+                return $id ? home_url('/organizations/' . $id . '/') : '';
+
+            case 'donate':
+                return home_url('/donate/');
+        }
+
+        return '';
+    }
+
+    /**
+     * Open Graph + Twitter Card — щоб посилання на тварину/організацію
+     * красиво розгорталось у Facebook/Telegram/Viber/Twitter тощо: велике
+     * фото, назва, короткий опис замість голого URL.
+     */
+    public static function output_open_graph_tags() {
+        $page = get_query_var('lapki_page');
+
+        if (!$page) {
+            return;
+        }
+
+        $site_name = get_bloginfo('name');
+        $url = self::get_page_canonical_url();
+        $description = self::get_page_description();
+        $title = '';
+        $image = null; // ['url' => ..., 'width' => ..., 'height' => ..., 'alt' => ...]
+
+        switch ($page) {
+            case 'animals_archive':
+                $title = 'Тварини, що шукають дім';
+                break;
+
+            case 'animal_single':
+                $animal = self::get_current_animal_data();
+                if (!$animal) {
+                    return;
+                }
+                $type_labels = ['dog' => 'собака', 'cat' => 'кіт', 'bird' => 'птах', 'rabbit' => 'кролик'];
+                $bits = array_filter([$animal['name'], $type_labels[$animal['type']] ?? '', $animal['address_city'] ?? '']);
+                $title = implode(', ', $bits) . ' — шукає дім';
+                $image = self::get_entity_og_image($animal, $animal['name']);
+                break;
+
+            case 'organizations_archive':
+                $title = 'Притулки та організації';
+                break;
+
+            case 'organization_single':
+                $organization = self::get_current_organization_data();
+                if (!$organization) {
+                    return;
+                }
+                $title = $organization['name'];
+                $image = self::get_entity_og_image($organization, $organization['name'], 'organization');
+                break;
+
+            case 'donate':
+                $title = 'Підтримати грошима';
+                break;
+
+            default:
+                return;
+        }
+
+        // Дефолтне зображення сайту, якщо у тварини/організації свого фото немає
+        if (!$image) {
+            $image = [
+                'url' => set_url_scheme(get_template_directory_uri() . '/logo.png', 'https'),
+                'width' => 800,
+                'height' => 500,
+                'alt' => $site_name,
+            ];
+        }
+
+        echo '<meta property="og:type" content="website">' . "\n";
+        echo '<meta property="og:site_name" content="' . esc_attr($site_name) . '">' . "\n";
+        echo '<meta property="og:locale" content="uk_UA">' . "\n";
+        if ($url) {
+            echo '<meta property="og:url" content="' . esc_url($url) . '">' . "\n";
+        }
+        if ($title) {
+            echo '<meta property="og:title" content="' . esc_attr($title) . '">' . "\n";
+        }
+        if ($description) {
+            echo '<meta property="og:description" content="' . esc_attr($description) . '">' . "\n";
+        }
+        if (!empty($image['url'])) {
+            echo '<meta property="og:image" content="' . esc_url($image['url']) . '">' . "\n";
+            echo '<meta property="og:image:secure_url" content="' . esc_url($image['url']) . '">' . "\n";
+            if (!empty($image['width'])) {
+                echo '<meta property="og:image:width" content="' . (int) $image['width'] . '">' . "\n";
+            }
+            if (!empty($image['height'])) {
+                echo '<meta property="og:image:height" content="' . (int) $image['height'] . '">' . "\n";
+            }
+            echo '<meta property="og:image:alt" content="' . esc_attr($image['alt']) . '">' . "\n";
+        }
+
+        echo '<meta name="twitter:card" content="' . (!empty($image['url']) ? 'summary_large_image' : 'summary') . '">' . "\n";
+        if ($title) {
+            echo '<meta name="twitter:title" content="' . esc_attr($title) . '">' . "\n";
+        }
+        if ($description) {
+            echo '<meta name="twitter:description" content="' . esc_attr($description) . '">' . "\n";
+        }
+        if (!empty($image['url'])) {
+            echo '<meta name="twitter:image" content="' . esc_url($image['url']) . '">' . "\n";
+        }
+    }
+
+    /**
+     * Головне фото тварини/організації для og:image (завжди https — соцмережі
+     * ігнорують http-зображення; siteurl сайту зараз http, тож примусово
+     * підмінюємо схему через set_url_scheme()). Повертає null, якщо фото немає.
+     */
+    private static function get_entity_og_image($entity, $alt, $entity_type = 'animal') {
+        if ($entity_type === 'animal') {
+            $photos = !empty($entity['media']) ? array_values(array_filter($entity['media'], function ($m) {
+                return $m['media_type'] === 'photo';
+            })) : [];
+            $photo = $photos[0] ?? null;
+        } else {
+            $photo = Lapki_Media::get_primary_photo($entity_type, $entity['id']);
+        }
+
+        if (empty($photo['url'])) {
+            return null;
+        }
+
+        return [
+            'url' => set_url_scheme($photo['url'], 'https'),
+            'width' => $photo['width'] ?? null,
+            'height' => $photo['height'] ?? null,
+            'alt' => $alt,
+        ];
     }
 
     /**
