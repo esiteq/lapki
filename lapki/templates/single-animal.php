@@ -131,15 +131,24 @@ $donate_organization = !empty($animal['organization_id']) ? Lapki_Organization::
                 </div>
                 <?php endif; ?>
 
-                <button type="button" class="btn lapki-btn-orange btn-lg w-100" data-bs-toggle="modal" data-bs-target="#lapki-application-modal">
-                    Хочу прилаштувати
-                </button>
+                <?php $share_url = home_url('/animals/' . (int) $animal['id'] . '/'); ?>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn lapki-btn-orange btn-sm" data-bs-toggle="modal" data-bs-target="#lapki-application-modal">
+                        Хочу прилаштувати
+                    </button>
 
-                <?php if ($donate_organization) : ?>
-                <button type="button" class="btn lapki-btn-green btn-lg w-100 mt-2" data-bs-toggle="modal" data-bs-target="#lapki-donate-modal">
-                    <i class="fas fa-heart me-1"></i>Допомогти грошима
-                </button>
-                <?php endif; ?>
+                    <?php if ($donate_organization) : ?>
+                    <button type="button" class="btn lapki-btn-green btn-sm" data-bs-toggle="modal" data-bs-target="#lapki-donate-modal">
+                        <i class="fas fa-heart me-1"></i>Допомогти грошима
+                    </button>
+                    <?php endif; ?>
+
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo rawurlencode($share_url); ?>"
+                       target="_blank" rel="noopener noreferrer"
+                       class="btn lapki-btn-facebook btn-sm">
+                        <i class="fab fa-facebook-f me-1"></i>Поділитися
+                    </a>
+                </div>
             </div>
         </div>
     </div>
