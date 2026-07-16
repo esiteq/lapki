@@ -51,7 +51,9 @@ $donate_organization = !empty($animal['organization_id']) ? Lapki_Organization::
                 <div class="lapki-animal-gallery">
                     <div class="lapki-animal-gallery__main mb-3">
                         <?php if ($main_photo) : ?>
-                            <img id="lapki-gallery-main-img" src="<?php echo esc_url($main_photo); ?>" alt="<?php echo esc_attr($animal['name']); ?>" class="img-fluid rounded-4 w-100" style="aspect-ratio:4/3;object-fit:cover;">
+                            <a href="<?php echo esc_url($main_photo); ?>" class="glightbox" data-gallery="animal-<?php echo (int) $animal['id']; ?>">
+                                <img id="lapki-gallery-main-img" src="<?php echo esc_url($main_photo); ?>" alt="<?php echo esc_attr($animal['name']); ?>" class="img-fluid rounded-4 w-100" style="aspect-ratio:4/3;object-fit:cover;">
+                            </a>
                         <?php else : ?>
                             <div class="rounded-4 w-100 d-flex align-items-center justify-content-center bg-light text-muted" style="aspect-ratio:4/3;font-size:4rem;"><i class="fas fa-paw"></i></div>
                         <?php endif; ?>
@@ -59,11 +61,12 @@ $donate_organization = !empty($animal['organization_id']) ? Lapki_Organization::
                     <?php if (count($photos) > 1) : ?>
                     <div class="d-flex gap-2 flex-wrap">
                         <?php foreach ($photos as $photo) : ?>
-                            <img src="<?php echo esc_url($photo['thumbnail_url'] ?: $photo['url']); ?>"
-                                 data-full="<?php echo esc_url($photo['url']); ?>"
-                                 class="lapki-animal-gallery__thumb rounded-3"
-                                 style="width:72px;height:72px;object-fit:cover;cursor:pointer;"
-                                 alt="<?php echo esc_attr($animal['name']); ?>">
+                            <a href="<?php echo esc_url($photo['url']); ?>" class="glightbox" data-gallery="animal-<?php echo (int) $animal['id']; ?>">
+                                <img src="<?php echo esc_url($photo['thumbnail_url'] ?: $photo['url']); ?>"
+                                     class="lapki-animal-gallery__thumb rounded-3"
+                                     style="width:72px;height:72px;object-fit:cover;cursor:pointer;"
+                                     alt="<?php echo esc_attr($animal['name']); ?>">
+                            </a>
                         <?php endforeach; ?>
                     </div>
                     <?php endif; ?>

@@ -86,7 +86,7 @@ $org_videos = array_values(array_filter($organization['media'] ?? [], function (
                         <?php if (!empty($org_photos)) : ?>
                         <div class="d-flex flex-wrap gap-2<?php echo !empty($org_videos) ? ' mb-3' : ''; ?>">
                             <?php foreach ($org_photos as $photo) : ?>
-                                <a href="<?php echo esc_url($photo['url']); ?>" target="_blank" rel="noopener" style="width:70px;height:70px;display:block;border-radius:4px;overflow:hidden;">
+                                <a href="<?php echo esc_url($photo['url']); ?>" class="glightbox" data-gallery="org-<?php echo (int) $organization['id']; ?>" style="width:70px;height:70px;display:block;border-radius:4px;overflow:hidden;">
                                     <img src="<?php echo esc_url($photo['thumbnail_url'] ?: $photo['url']); ?>" alt="<?php echo esc_attr($organization['name']); ?>" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
                                 </a>
                             <?php endforeach; ?>
