@@ -16,6 +16,8 @@
         marker: null,
         dropzone: null,
         currentAnimalId: null,
+        organizationDropzone: null,
+        currentOrgId: null,
 
         /**
          * Ініціалізація
@@ -27,6 +29,7 @@
             this.initAttributesList();
             this.initOrganizationsList();
             this.initOrganizationForm();
+            this.initOrganizationMediaGallery();
 
             // Завантажити кеш атрибутів перед ініціалізацією
             this.loadAttributesCache(function() {
@@ -1069,6 +1072,261 @@
         showPhotoModal: function(imageUrl) {
             $('#modal-image').attr('src', imageUrl);
             $('#photo-modal').fadeIn(200);
+        },
+
+        // =======================================================
+        // ФОТО/ВІДЕО ПРИТУЛКУ (окремо від фото тварин, uploads/lapki/org/)
+        // =======================================================
+
+        /**
+         * Ініціалізація галереї фото/відео організації та Dropzone
+         */
+        initOrganizationMediaGallery: function() {
+            if (!$('#organization-media-gallery').length) {
+                return;
+            }
+
+            const orgId = this.getUrlParameter('id');
+            if (!orgId) {
+                return;
+            }
+
+            this.currentOrgId = orgId;
+
+            this.loadOrganizationMediaGallery(orgId);
+            this.initOrganizationDropzone(orgId);
+            this.initOrganizationVideoForm(orgId);
+            this.initPhotoModal();
+        },
+
+        /**
+         * Завантажити фото/відео організації
+         */
+        loadOrganizationMediaGallery: function(orgId) {
+            const self = this;
+
+            this.apiRequest('/organizations/' + orgId, 'GET').done(function(response) {
+                const media = (response && response.media) || [];
+                const photos = media.filter(function(m) { return m.media_type === 'photo'; });
+                const videos = media.filter(function(m) { return m.media_type === 'video'; });
+
+                self.renderOrganizationPhotoGallery(photos);
+                self.renderOrganizationVideoList(videos);
+            }).fail(function() {
+                $('#organization-media-gallery').html('<p style="color: #d63384;">Помилка завантаження фото</p>');
+                $('#organization-video-list').html('<p style="color: #d63384;">Помилка завантаження відео</p>');
+            });
+        },
+
+        /**
+         * Відобразити галерею фото організації
+         */
+        renderOrganizationPhotoGallery: function(photos) {
+            const $gallery = $('#organization-media-gallery');
+            $gallery.empty();
+
+            if (!photos.length) {
+                $gallery.html('<p style="color: #666; font-style: italic;">Фото ще немає</p>');
+                return;
+            }
+
+            photos.forEach(function(item) {
+                const $item = $('<div>')
+                    .addClass('lapki-media-item')
+                    .attr('data-media-id', item.id);
+
+                if (item.is_primary) {
+                    $item.addClass('is-primary');
+                }
+
+                const $img = $('<img>')
+                    .attr('src', item.thumbnail_url)
+                    .attr('data-full', item.url)
+                    .attr('alt', 'Фото притулку');
+
+                const $actions = $('<div>').addClass('lapki-media-item-actions');
+
+                if (!item.is_primary) {
+                    const $setPrimaryBtn = $('<button>')
+                        .attr('title', 'Встановити головним фото')
+                        .html('⭐')
+                        .on('click', function(e) {
+                            e.stopPropagation();
+                            LapkiAdmin.setPrimaryOrganizationMedia(item.id);
+                        });
+                    $actions.append($setPrimaryBtn);
+                }
+
+                const $deleteBtn = $('<button>')
+                    .attr('title', 'Видалити')
+                    .html('🗑️')
+                    .on('click', function(e) {
+                        e.stopPropagation();
+                        if (confirm('Видалити це фото?')) {
+                            LapkiAdmin.deleteOrganizationMedia(item.id);
+                        }
+                    });
+                $actions.append($deleteBtn);
+
+                $item.append($img);
+                $item.append($actions);
+
+                if (item.is_primary) {
+                    $item.append($('<div>').addClass('lapki-media-primary-badge').text('ГОЛОВНЕ'));
+                }
+
+                $gallery.append($item);
+            });
+
+            $gallery.find('.lapki-media-item img').on('click', function() {
+                LapkiAdmin.showPhotoModal($(this).attr('data-full'));
+            });
+        },
+
+        /**
+         * Відобразити список відео організації (посилання, без файлів)
+         */
+        renderOrganizationVideoList: function(videos) {
+            const $list = $('#organization-video-list');
+            $list.empty();
+
+            if (!videos.length) {
+                $list.html('<p style="color: #666; font-style: italic;">Відео ще немає</p>');
+                return;
+            }
+
+            videos.forEach(function(item) {
+                const $item = $('<div>')
+                    .addClass('lapki-media-item is-video')
+                    .attr('data-media-id', item.id)
+                    .attr('title', item.title || item.url);
+
+                const $link = $('<a>')
+                    .attr('href', item.url)
+                    .attr('target', '_blank')
+                    .attr('rel', 'noopener')
+                    .css({ color: 'white', textDecoration: 'none' })
+                    .html('▶');
+                $item.append($link);
+
+                const $actions = $('<div>').addClass('lapki-media-item-actions');
+                const $deleteBtn = $('<button>')
+                    .attr('title', 'Видалити')
+                    .html('🗑️')
+                    .on('click', function(e) {
+                        e.stopPropagation();
+                        if (confirm('Видалити це відео?')) {
+                            LapkiAdmin.deleteOrganizationMedia(item.id);
+                        }
+                    });
+                $actions.append($deleteBtn);
+                $item.append($actions);
+
+                $list.append($item);
+            });
+        },
+
+        /**
+         * Ініціалізувати Dropzone для фото організації
+         */
+        initOrganizationDropzone: function(orgId) {
+            const self = this;
+
+            if (typeof Dropzone === 'undefined') {
+                console.error('Dropzone не завантажено');
+                return;
+            }
+
+            Dropzone.autoDiscover = false;
+
+            this.organizationDropzone = new Dropzone('#organization-dropzone-upload', {
+                url: this.apiBase + '/organizations/' + orgId + '/media',
+                paramName: 'file',
+                maxFilesize: 10,
+                acceptedFiles: 'image/jpeg,image/png,image/gif,image/webp',
+                addRemoveLinks: true,
+                dictDefaultMessage: 'Перетягніть файли сюди або клікніть для вибору',
+                dictRemoveFile: 'Видалити',
+                dictCancelUpload: 'Скасувати',
+                dictFileTooBig: 'Файл занадто великий ({{filesize}}MB). Максимум: {{maxFilesize}}MB.',
+                dictInvalidFileType: 'Недопустимий тип файлу. Дозволені: JPG, PNG, GIF, WebP.',
+                headers: {
+                    'X-WP-Nonce': typeof lapkiAdmin !== 'undefined' ? lapkiAdmin.nonce : ''
+                },
+                init: function() {
+                    this.on('success', function(file, response) {
+                        setTimeout(function() {
+                            self.loadOrganizationMediaGallery(orgId);
+                        }, 500);
+                    });
+
+                    this.on('error', function(file, errorMessage) {
+                        console.error('Помилка завантаження:', errorMessage);
+                        alert('Помилка завантаження: ' + (errorMessage.message || errorMessage));
+                    });
+
+                    this.on('complete', function(file) {
+                        setTimeout(function() {
+                            this.removeFile(file);
+                        }.bind(this), 2000);
+                    });
+                }
+            });
+        },
+
+        /**
+         * Ініціалізувати форму додавання відео (посилання) для організації
+         */
+        initOrganizationVideoForm: function(orgId) {
+            const self = this;
+
+            $('#organization-video-add').on('click', function() {
+                const videoUrl = $('#organization-video-url').val().trim();
+                const title = $('#organization-video-title').val().trim();
+
+                if (!videoUrl) {
+                    alert("Вкажіть посилання на відео");
+                    return;
+                }
+
+                self.apiRequest('/organizations/' + orgId + '/video', 'POST', {
+                    video_url: videoUrl,
+                    title: title
+                }).done(function() {
+                    $('#organization-video-url').val('');
+                    $('#organization-video-title').val('');
+                    self.loadOrganizationMediaGallery(orgId);
+                }).fail(function(xhr) {
+                    const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Помилка додавання відео';
+                    alert(msg);
+                });
+            });
+        },
+
+        /**
+         * Видалити фото/відео організації
+         */
+        deleteOrganizationMedia: function(mediaId) {
+            const self = this;
+
+            this.apiRequest('/media/' + mediaId, 'DELETE').done(function() {
+                self.loadOrganizationMediaGallery(self.currentOrgId);
+            }).fail(function() {
+                alert('Помилка видалення файлу');
+            });
+        },
+
+        /**
+         * Встановити головне фото організації
+         */
+        setPrimaryOrganizationMedia: function(mediaId) {
+            const self = this;
+
+            this.apiRequest('/media/' + mediaId + '/primary', 'PUT').done(function() {
+                self.loadOrganizationMediaGallery(self.currentOrgId);
+            }).fail(function() {
+                alert('Помилка встановлення головного фото');
+            });
         },
 
         // =======================================================

@@ -829,36 +829,40 @@ class Lapki_Media extends Lapki_Model {
      * Додати URL до медіафайлу
      */
     private static function add_urls_to_media($media) {
-        if (!$media || empty($media['file_path'])) {
+        if (!$media) {
             return $media;
         }
-
-        $filename = $media['file_path'];
 
         // Конвертувати is_primary в boolean для JavaScript
         $media['is_primary'] = (bool) $media['is_primary'];
 
+        // Фото організацій зберігаються в окремій теці (uploads/lapki/org/),
+        // не змішуючись з фото тварин (uploads/lapki/images/)
+        $scope = ($media['entity_type'] === 'organization') ? 'organization' : 'animal';
+        $filename = $media['file_path'] ?? '';
+
         // Додати URL в залежності від типу медіа
         switch ($media['media_type']) {
             case 'photo':
-                $media['url'] = Lapki_Main::get_image_url($filename);
-                $media['thumbnail_url'] = Lapki_Main::get_image_url($filename, true);
-                $media['has_thumbnail'] = Lapki_Main::image_exists($filename, true);
+                if (empty($filename)) {
+                    break;
+                }
+                $media['url'] = Lapki_Main::get_image_url($filename, false, $scope);
+                $media['thumbnail_url'] = Lapki_Main::get_image_url($filename, true, $scope);
+                $media['has_thumbnail'] = Lapki_Main::image_exists($filename, true, $scope);
                 break;
 
             case 'video':
-                // Для відео можна додати логіку пізніше
-                if (!empty($media['video_url'])) {
-                    $media['url'] = $media['video_url'];
-                } else {
-                    $media['url'] = Lapki_Main::get_media_base_url() . '/videos/' . $filename;
-                }
+                // Відео — завжди зовнішнє посилання (YouTube/Vimeo/пряме), без завантаженого файлу
+                $media['url'] = $media['video_url'] ?? '';
                 break;
-                
+
             default:
-                $media['url'] = Lapki_Main::get_media_base_url() . '/' . $filename;
+                if (!empty($filename)) {
+                    $media['url'] = Lapki_Main::get_media_base_url() . '/' . $filename;
+                }
         }
-        
+
         return $media;
     }
     
@@ -915,28 +919,31 @@ class Lapki_Media extends Lapki_Model {
             return new WP_Error('invalid_type', 'Невірний тип файлу');
         }
         
+        // Фото організацій зберігаються окремо від фото тварин (uploads/lapki/org/)
+        $scope = ($entity_type === 'organization') ? 'organization' : 'animal';
+
         // Створити папки якщо їх немає
         Lapki_Main::create_media_directories();
-        
+
         // Генерувати унікальну назву файлу
         $filename = Lapki_Main::generate_filename($file['name'], $animal_name);
-        $destination = Lapki_Main::get_image_path($filename);
-        
+        $destination = Lapki_Main::get_image_path($filename, false, $scope);
+
         // Переміщення файлу
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
             return new WP_Error('move_error', 'Не вдалося перемістити файл');
         }
-        
+
         // Отримати інформацію про зображення
         $image_info = getimagesize($destination);
         if ($image_info === false) {
             unlink($destination);
             return new WP_Error('invalid_image', 'Файл не є валідним зображенням');
         }
-        
+
         // Створити thumbnail
-        Lapki_Main::create_thumbnail($filename);
-        
+        Lapki_Main::create_thumbnail($filename, $scope);
+
         // Створити запис в БД
         $media_data = [
             'entity_type' => $entity_type,
@@ -955,18 +962,18 @@ class Lapki_Media extends Lapki_Model {
         }
 
         $media_id = self::create($media_data);
-        
+
         if (!$media_id) {
             // Видалити файли якщо не вдалося створити запис
-            Lapki_Main::delete_image($filename);
+            Lapki_Main::delete_image($filename, $scope);
             return new WP_Error('db_error', 'Не вдалося створити запис в БД');
         }
-        
+
         return [
             'media_id' => $media_id,
             'filename' => $filename,
-            'url' => Lapki_Main::get_image_url($filename),
-            'thumbnail_url' => Lapki_Main::get_image_url($filename, true)
+            'url' => Lapki_Main::get_image_url($filename, false, $scope),
+            'thumbnail_url' => Lapki_Main::get_image_url($filename, true, $scope)
         ];
     }
     
@@ -988,9 +995,10 @@ class Lapki_Media extends Lapki_Model {
         
         // Видалити файли якщо це фото
         if ($media['media_type'] === 'photo' && !empty($media['file_path'])) {
-            Lapki_Main::delete_image($media['file_path']);
+            $scope = ($media['entity_type'] === 'organization') ? 'organization' : 'animal';
+            Lapki_Main::delete_image($media['file_path'], $scope);
         }
-        
+
         // Видалити запис з БД
         return $wpdb->delete(
             self::get_table_name(),
@@ -1033,9 +1041,10 @@ class Lapki_Media extends Lapki_Model {
         ), ARRAY_A);
 
         // Видалити файли
+        $scope = ($entity_type === 'organization') ? 'organization' : 'animal';
         foreach ($media_files as $media) {
             if ($media['media_type'] === 'photo' && !empty($media['file_path'])) {
-                Lapki_Main::delete_image($media['file_path']);
+                Lapki_Main::delete_image($media['file_path'], $scope);
             }
         }
 

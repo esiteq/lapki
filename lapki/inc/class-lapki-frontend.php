@@ -164,10 +164,9 @@ class Lapki_Frontend {
                 if (!$animal) {
                     return $title;
                 }
-                $type_labels = ['dog' => 'собака', 'cat' => 'кіт', 'bird' => 'птах', 'rabbit' => 'кролик'];
                 $bits = array_filter([
                     $animal['name'],
-                    $type_labels[$animal['type']] ?? '',
+                    Lapki_Main::get_animal_type_label($animal['type'], $animal['gender'] ?? ''),
                     $animal['address_city'] ?? '',
                 ]);
                 return implode(', ', $bits) . ' — шукає дім | ' . $site_name;
@@ -317,8 +316,11 @@ class Lapki_Frontend {
                 if (!$animal) {
                     return;
                 }
-                $type_labels = ['dog' => 'собака', 'cat' => 'кіт', 'bird' => 'птах', 'rabbit' => 'кролик'];
-                $bits = array_filter([$animal['name'], $type_labels[$animal['type']] ?? '', $animal['address_city'] ?? '']);
+                $bits = array_filter([
+                    $animal['name'],
+                    Lapki_Main::get_animal_type_label($animal['type'], $animal['gender'] ?? ''),
+                    $animal['address_city'] ?? '',
+                ]);
                 $title = implode(', ', $bits) . ' — шукає дім';
                 $image = self::get_entity_og_image($animal, $animal['name']);
                 break;

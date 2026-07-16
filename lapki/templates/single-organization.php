@@ -34,6 +34,15 @@ $type_labels = [
 ];
 
 $animals = Lapki_Animal::search(['organization_id' => $organization['id'], 'status' => '', 'limit' => 24]);
+
+// Фото/відео притулку — зберігаються окремо від фото тварин, показуються
+// окремо від грід-списку тварин (у лівій панелі, не серед карток тварин)
+$org_photos = array_values(array_filter($organization['media'] ?? [], function ($m) {
+    return $m['media_type'] === 'photo';
+}));
+$org_videos = array_values(array_filter($organization['media'] ?? [], function ($m) {
+    return $m['media_type'] === 'video';
+}));
 ?>
 
 <section class="py-5">
@@ -68,6 +77,34 @@ $animals = Lapki_Animal::search(['organization_id' => $organization['id'], 'stat
                         <?php endif; ?>
                     </div>
                 </div>
+
+                <?php if (!empty($org_photos) || !empty($org_videos)) : ?>
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="h6 fw-bold mb-3">Фото та відео</h2>
+
+                        <?php if (!empty($org_photos)) : ?>
+                        <div class="d-flex flex-wrap gap-2<?php echo !empty($org_videos) ? ' mb-3' : ''; ?>">
+                            <?php foreach ($org_photos as $photo) : ?>
+                                <a href="<?php echo esc_url($photo['url']); ?>" target="_blank" rel="noopener" style="width:70px;height:70px;display:block;border-radius:4px;overflow:hidden;">
+                                    <img src="<?php echo esc_url($photo['thumbnail_url'] ?: $photo['url']); ?>" alt="<?php echo esc_attr($organization['name']); ?>" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($org_videos)) : ?>
+                        <div class="d-flex flex-column gap-1">
+                            <?php foreach ($org_videos as $video) : ?>
+                                <a href="<?php echo esc_url($video['url']); ?>" target="_blank" rel="noopener" class="small">
+                                    <i class="fas fa-play-circle"></i> <?php echo esc_html($video['title'] ?: 'Відео'); ?>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <?php if (!empty($organization['mission_statement'])) : ?>
                 <div class="card border-0 shadow-sm mb-4">

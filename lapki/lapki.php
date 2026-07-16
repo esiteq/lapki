@@ -79,6 +79,7 @@ class Lapki_Main {
     const MEDIA_IMAGES_DIR = 'images';
     const MEDIA_THUMBNAILS_DIR = 'thumbnails';
     const MEDIA_VIDEOS_DIR = 'videos';
+    const MEDIA_ORG_DIR = 'org';
     
     /**
      * Розміри thumbnails
@@ -150,79 +151,109 @@ class Lapki_Main {
     }
     
     /**
-     * Отримати шлях до папки зображень
+     * Отримати шлях до папки зображень. $scope='organization' веде в
+     * окрему підпапку uploads/lapki/org/ — фото притулків не змішуються
+     * з фото тварин (uploads/lapki/images/, дефолтна поведінка, як і раніше).
      */
-    public static function get_images_path() {
-        return trailingslashit(self::get_media_base_path()) . self::MEDIA_IMAGES_DIR;
+    public static function get_images_path($scope = 'animal') {
+        $base = trailingslashit(self::get_media_base_path());
+
+        if ($scope === 'organization') {
+            return $base . self::MEDIA_ORG_DIR . '/' . self::MEDIA_IMAGES_DIR;
+        }
+
+        return $base . self::MEDIA_IMAGES_DIR;
     }
-    
+
     /**
      * Отримати URL до папки зображень
      */
-    public static function get_images_url() {
-        return trailingslashit(self::get_media_base_url()) . self::MEDIA_IMAGES_DIR;
+    public static function get_images_url($scope = 'animal') {
+        $base = trailingslashit(self::get_media_base_url());
+
+        if ($scope === 'organization') {
+            return $base . self::MEDIA_ORG_DIR . '/' . self::MEDIA_IMAGES_DIR;
+        }
+
+        return $base . self::MEDIA_IMAGES_DIR;
     }
-    
+
     /**
      * Отримати шлях до папки thumbnails
      */
-    public static function get_thumbnails_path() {
-        return trailingslashit(self::get_media_base_path()) . self::MEDIA_THUMBNAILS_DIR;
+    public static function get_thumbnails_path($scope = 'animal') {
+        $base = trailingslashit(self::get_media_base_path());
+
+        if ($scope === 'organization') {
+            return $base . self::MEDIA_ORG_DIR . '/' . self::MEDIA_THUMBNAILS_DIR;
+        }
+
+        return $base . self::MEDIA_THUMBNAILS_DIR;
     }
-    
+
     /**
      * Отримати URL до папки thumbnails
      */
-    public static function get_thumbnails_url() {
-        return trailingslashit(self::get_media_base_url()) . self::MEDIA_THUMBNAILS_DIR;
+    public static function get_thumbnails_url($scope = 'animal') {
+        $base = trailingslashit(self::get_media_base_url());
+
+        if ($scope === 'organization') {
+            return $base . self::MEDIA_ORG_DIR . '/' . self::MEDIA_THUMBNAILS_DIR;
+        }
+
+        return $base . self::MEDIA_THUMBNAILS_DIR;
     }
-    
+
     /**
      * Отримати повний URL зображення за назвою файлу
-     * 
+     *
      * @param string $filename Назва файлу (vasya_cat.jpg)
      * @param bool $thumbnail Чи потрібен thumbnail
+     * @param string $scope 'animal' (дефолт) або 'organization' — окрема тека
      * @return string Повний URL
      */
-    public static function get_image_url($filename, $thumbnail = false) {
+    public static function get_image_url($filename, $thumbnail = false, $scope = 'animal') {
         if (empty($filename)) {
             return '';
         }
-        
+
         if ($thumbnail) {
-            return trailingslashit(self::get_thumbnails_url()) . $filename;
+            return trailingslashit(self::get_thumbnails_url($scope)) . $filename;
         }
-        
-        return trailingslashit(self::get_images_url()) . $filename;
+
+        return trailingslashit(self::get_images_url($scope)) . $filename;
     }
-    
+
     /**
      * Отримати повний шлях до файлу зображення
-     * 
+     *
      * @param string $filename Назва файлу (vasya_cat.jpg)
      * @param bool $thumbnail Чи потрібен thumbnail
+     * @param string $scope 'animal' (дефолт) або 'organization' — окрема тека
      * @return string Повний шлях
      */
-    public static function get_image_path($filename, $thumbnail = false) {
+    public static function get_image_path($filename, $thumbnail = false, $scope = 'animal') {
         if (empty($filename)) {
             return '';
         }
-        
+
         if ($thumbnail) {
-            return trailingslashit(self::get_thumbnails_path()) . $filename;
+            return trailingslashit(self::get_thumbnails_path($scope)) . $filename;
         }
-        
-        return trailingslashit(self::get_images_path()) . $filename;
+
+        return trailingslashit(self::get_images_path($scope)) . $filename;
     }
-    
+
     /**
-     * Створити необхідні папки для медіа
+     * Створити необхідні папки для медіа (тварини + окремо організації)
      */
     public static function create_media_directories() {
         $dirs = [
             self::get_media_base_path(),
             self::get_images_path(),
             self::get_thumbnails_path(),
+            self::get_images_path('organization'),
+            self::get_thumbnails_path('organization'),
             trailingslashit(self::get_media_base_path()) . self::MEDIA_VIDEOS_DIR
         ];
         
@@ -257,12 +288,12 @@ class Lapki_Main {
      * @param bool $thumbnail Перевірити thumbnail
      * @return bool
      */
-    public static function image_exists($filename, $thumbnail = false) {
+    public static function image_exists($filename, $thumbnail = false, $scope = 'animal') {
         if (empty($filename)) {
             return false;
         }
-        
-        $filepath = self::get_image_path($filename, $thumbnail);
+
+        $filepath = self::get_image_path($filename, $thumbnail, $scope);
         return file_exists($filepath);
     }
     
@@ -301,10 +332,10 @@ class Lapki_Main {
      * @param string $filename Назва файлу
      * @return bool Успішність створення
      */
-    public static function create_thumbnail($filename) {
-        $source_path = self::get_image_path($filename);
-        $thumb_path = self::get_image_path($filename, true);
-        
+    public static function create_thumbnail($filename, $scope = 'animal') {
+        $source_path = self::get_image_path($filename, false, $scope);
+        $thumb_path = self::get_image_path($filename, true, $scope);
+
         if (!file_exists($source_path)) {
             return false;
         }
@@ -331,28 +362,48 @@ class Lapki_Main {
      * @param string $filename Назва файлу
      * @return bool Успішність видалення
      */
-    public static function delete_image($filename) {
+    public static function delete_image($filename, $scope = 'animal') {
         if (empty($filename)) {
             return false;
         }
-        
+
         $deleted = true;
-        
+
         // Видалити оригінал
-        $original_path = self::get_image_path($filename);
+        $original_path = self::get_image_path($filename, false, $scope);
         if (file_exists($original_path)) {
             $deleted = $deleted && unlink($original_path);
         }
-        
+
         // Видалити thumbnail
-        $thumb_path = self::get_image_path($filename, true);
+        $thumb_path = self::get_image_path($filename, true, $scope);
         if (file_exists($thumb_path)) {
             $deleted = $deleted && unlink($thumb_path);
         }
         
         return $deleted;
     }
-    
+
+    /**
+     * Назва типу тварини для показу. Для котів — "кіт"/"кішка" залежно
+     * від статі (українською звучить природно), для решти типів — єдина
+     * назва незалежно від статі ("пес"/"сука" звучали б неприродно).
+     */
+    public static function get_animal_type_label($type, $gender = '', $capitalize = false) {
+        if ($type === 'cat') {
+            $label = ($gender === 'female') ? 'кішка' : 'кіт';
+        } else {
+            $labels = ['dog' => 'собака', 'bird' => 'птах', 'rabbit' => 'кролик', 'other' => 'інше'];
+            $label = $labels[$type] ?? $type;
+        }
+
+        if ($capitalize) {
+            $label = mb_strtoupper(mb_substr($label, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($label, 1, null, 'UTF-8');
+        }
+
+        return $label;
+    }
+
 }
 
 // Ініціалізація плагіна

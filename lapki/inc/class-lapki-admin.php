@@ -922,6 +922,8 @@ class Lapki_Admin
             <h1><?php echo $is_edit ? 'Редагувати організацію' : 'Додати організацію'; ?></h1>
             <p><a href="<?php echo admin_url('admin.php?page=lapki-organizations'); ?>" class="button">← Повернутися до списку</a></p>
 
+            <div class="lapki-animal-edit-layout">
+                <div class="lapki-animal-form-column">
             <form id="lapki-organization-form" class="lapki-form">
                 <input type="hidden" id="id" name="id">
 
@@ -993,11 +995,199 @@ class Lapki_Admin
                     <a href="<?php echo admin_url('admin.php?page=lapki-organizations'); ?>" class="button">Скасувати</a>
                 </p>
             </form>
+                </div>
+
+                <?php if ($is_edit): ?>
+                <div class="lapki-animal-media-column">
+                    <h2>Фото притулку</h2>
+                    <p class="description">Зберігаються окремо від фото тварин, відображаються на публічній сторінці організації.</p>
+                    <div id="organization-media-gallery" class="lapki-media-gallery">
+                        <!-- Існуючі фото завантажуються через AJAX -->
+                    </div>
+
+                    <h3 style="margin-top: 20px;">Додати нові фото</h3>
+                    <div id="organization-dropzone-upload" class="lapki-dropzone">
+                        <div class="dz-message">
+                            Перетягніть файли сюди або клікніть для вибору<br>
+                            <span style="font-size: 12px; color: #666;">(JPG, PNG, GIF, WebP, до 10 МБ)</span>
+                        </div>
+                    </div>
+
+                    <h2 style="margin-top: 30px;">Відео притулку</h2>
+                    <p class="description">Посилання на YouTube/Vimeo або пряме відео — власного відеосховища немає.</p>
+                    <div id="organization-video-list" class="lapki-media-gallery">
+                        <!-- Існуючі відео завантажуються через AJAX -->
+                    </div>
+                    <input type="url" id="organization-video-url" class="regular-text" style="width:100%; margin-bottom:8px;" placeholder="https://www.youtube.com/watch?v=...">
+                    <input type="text" id="organization-video-title" class="regular-text" style="width:100%; margin-bottom:8px;" placeholder="Назва відео (необов'язково)">
+                    <button type="button" id="organization-video-add" class="button">Додати відео</button>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Модальне вікно для збільшення фото -->
+        <div id="photo-modal" class="lapki-photo-modal" style="display: none;">
+            <span class="lapki-modal-close">&times;</span>
+            <img class="lapki-modal-content" id="modal-image">
         </div>
 
         <style>
             .required { color: #d63384; }
             .lapki-form h2 { margin-top: 30px; }
+
+            .lapki-animal-edit-layout {
+                display: flex;
+                gap: 30px;
+                margin-top: 20px;
+            }
+
+            .lapki-animal-form-column {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .lapki-animal-media-column {
+                width: 350px;
+                flex-shrink: 0;
+            }
+
+            .lapki-media-gallery {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+
+            .lapki-media-item {
+                position: relative;
+                width: 100px;
+                height: 100px;
+                border: 2px solid #ddd;
+                border-radius: 4px;
+                overflow: hidden;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .lapki-media-item:hover {
+                border-color: #0073aa;
+                transform: scale(1.05);
+            }
+
+            .lapki-media-item.is-primary {
+                border-color: #00a32a;
+                border-width: 3px;
+            }
+
+            .lapki-media-item img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .lapki-media-item-actions {
+                position: absolute;
+                top: 0;
+                right: 0;
+                display: flex;
+                gap: 2px;
+                padding: 4px;
+                background: rgba(0,0,0,0.6);
+                opacity: 0;
+                transition: opacity 0.2s;
+            }
+
+            .lapki-media-item:hover .lapki-media-item-actions {
+                opacity: 1;
+            }
+
+            .lapki-media-item-actions button {
+                background: white;
+                border: none;
+                width: 24px;
+                height: 24px;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 14px;
+                line-height: 1;
+                padding: 0;
+            }
+
+            .lapki-media-item-actions button:hover {
+                background: #f0f0f0;
+            }
+
+            .lapki-media-primary-badge {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #00a32a;
+                color: white;
+                font-size: 10px;
+                text-align: center;
+                padding: 2px;
+                font-weight: bold;
+            }
+
+            .lapki-media-item.is-video {
+                background: #222;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 28px;
+            }
+
+            .lapki-dropzone {
+                border: 2px dashed #ddd;
+                border-radius: 4px;
+                padding: 20px;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .lapki-dropzone:hover,
+            .lapki-dropzone.dz-drag-hover {
+                border-color: #0073aa;
+                background: #f0f6fc;
+            }
+
+            .lapki-photo-modal {
+                display: none;
+                position: fixed;
+                z-index: 100000;
+                padding-top: 50px;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0,0,0,0.9);
+            }
+
+            .lapki-modal-content {
+                margin: auto;
+                display: block;
+                max-width: 90%;
+                max-height: 90%;
+            }
+
+            .lapki-modal-close {
+                position: absolute;
+                top: 15px;
+                right: 35px;
+                color: #f1f1f1;
+                font-size: 40px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+            .lapki-modal-close:hover {
+                color: #bbb;
+            }
         </style>
 <?php
     }

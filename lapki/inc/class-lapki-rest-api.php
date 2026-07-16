@@ -250,6 +250,20 @@ class Lapki_REST_API {
             'permission_callback' => [__CLASS__, 'check_animal_media_permission']
         ]);
 
+        // Фото притулку/організації — окремо від фото тварин (uploads/lapki/org/)
+        register_rest_route($namespace, '/organizations/(?P<id>\d+)/media', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [__CLASS__, 'upload_organization_media'],
+            'permission_callback' => [__CLASS__, 'check_organization_media_permission']
+        ]);
+
+        // Відео притулку — зовнішнє посилання (YouTube/Vimeo/пряме), без завантаження файлу
+        register_rest_route($namespace, '/organizations/(?P<id>\d+)/video', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [__CLASS__, 'add_organization_video'],
+            'permission_callback' => [__CLASS__, 'check_organization_media_permission']
+        ]);
+
         register_rest_route($namespace, '/media/(?P<id>\d+)', [
             'methods' => WP_REST_Server::DELETABLE,
             'callback' => [__CLASS__, 'delete_media'],
@@ -1057,7 +1071,27 @@ class Lapki_REST_API {
             }
         }
 
+        if ($media['entity_type'] === 'organization') {
+            return Lapki_Roles::user_owns_organization($media['entity_id'], get_current_user_id());
+        }
+
         return false;
+    }
+
+    /**
+     * Завантаження фото/відео притулку: capability + власник/учасник
+     * організації (або адмін) — той самий рівень доступу, що й для медіа тварин
+     */
+    public static function check_organization_media_permission($request) {
+        if (!current_user_can(Lapki_Roles::CAP_MANAGE_ANIMALS)) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        return Lapki_Roles::user_owns_organization($request->get_param('id'), get_current_user_id());
     }
 
     /**
@@ -1122,6 +1156,87 @@ class Lapki_REST_API {
         $media = Lapki_Media::get($result['media_id']);
 
         return new WP_REST_Response($media, 201);
+    }
+
+    /**
+     * POST /wp-json/lapki/v1/organizations/{id}/media
+     *
+     * Фото притулку — зберігається окремо від фото тварин (uploads/lapki/org/),
+     * та відображається на публічній сторінці організації окремо від грід-списку тварин.
+     */
+    public static function upload_organization_media($request) {
+        $organization_id = $request->get_param('id');
+
+        $organization = Lapki_Organization::get($organization_id);
+        if (!$organization) {
+            return new WP_Error('organization_not_found', __('Організацію не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        $files = $request->get_file_params();
+        if (empty($files['file'])) {
+            return new WP_Error('no_file', __('Файл не надіслано', 'lapki'), ['status' => 400]);
+        }
+
+        $file = $files['file'];
+
+        if ($file['size'] > 10 * 1024 * 1024) {
+            return new WP_Error('file_too_large', __('Файл занадто великий. Максимум 10MB', 'lapki'), ['status' => 400]);
+        }
+
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+        $is_primary = !Lapki_Media::has_primary('organization', $organization_id) ? 1 : 0;
+        $sort_order = Lapki_Media::get_next_sort_order('organization', $organization_id);
+
+        $result = Lapki_Media::upload_image($file, 'organization', $organization_id, $organization['name'] ?? '', $is_primary, $sort_order);
+
+        if (is_wp_error($result)) {
+            $server_side_errors = ['move_error', 'db_error'];
+            $status = in_array($result->get_error_code(), $server_side_errors, true) ? 500 : 400;
+            return new WP_Error($result->get_error_code(), $result->get_error_message(), ['status' => $status]);
+        }
+
+        $media = Lapki_Media::get($result['media_id']);
+
+        return new WP_REST_Response($media, 201);
+    }
+
+    /**
+     * POST /wp-json/lapki/v1/organizations/{id}/video
+     *
+     * Відео притулку — зовнішнє посилання (YouTube/Vimeo/пряме mp4), без
+     * завантаження й обробки файлу (для цього немає інфраструктури — той самий
+     * підхід зарезервований у схемі БД полем video_url для будь-якої сутності).
+     */
+    public static function add_organization_video($request) {
+        $organization_id = $request->get_param('id');
+
+        $organization = Lapki_Organization::get($organization_id);
+        if (!$organization) {
+            return new WP_Error('organization_not_found', __('Організацію не знайдено', 'lapki'), ['status' => 404]);
+        }
+
+        $video_url = esc_url_raw($request->get_param('video_url'));
+        if (empty($video_url)) {
+            return new WP_Error('missing_video_url', __("Посилання на відео обов'язкове", 'lapki'), ['status' => 400]);
+        }
+
+        $media_id = Lapki_Media::create([
+            'entity_type' => 'organization',
+            'entity_id' => $organization_id,
+            'media_type' => 'video',
+            'video_url' => $video_url,
+            'title' => sanitize_text_field($request->get_param('title') ?: ''),
+            'sort_order' => Lapki_Media::get_next_sort_order('organization', $organization_id),
+        ]);
+
+        if (!$media_id) {
+            return new WP_Error('create_failed', __('Не вдалося додати відео', 'lapki'), ['status' => 500]);
+        }
+
+        return new WP_REST_Response(Lapki_Media::get($media_id), 201);
     }
 
     /**

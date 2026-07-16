@@ -26,7 +26,6 @@ if (!$animal) {
 
 get_header();
 
-$type_labels   = ['dog' => 'Собака', 'cat' => 'Кіт', 'bird' => 'Птах', 'rabbit' => 'Кролик', 'other' => 'Інше'];
 $type_icons    = ['dog' => 'fa-dog', 'cat' => 'fa-cat', 'bird' => 'fa-dove', 'rabbit' => 'fa-paw', 'other' => 'fa-paw'];
 $age_labels    = ['baby' => 'Малюк', 'young' => 'Молодий', 'adult' => 'Дорослий', 'senior' => 'Похилого віку'];
 $gender_labels = ['male' => 'Самець', 'female' => 'Самка', 'unknown' => 'Невідомо'];
@@ -81,7 +80,7 @@ $donate_organization = !empty($animal['organization_id']) ? Lapki_Organization::
                 $shots_set  = isset($animal['shots_current']) && $animal['shots_current'] !== null && $animal['shots_current'] !== '';
                 ?>
                 <div class="d-flex flex-wrap gap-2 mb-3">
-                    <span class="lapki-card__tag"><i class="fas <?php echo esc_attr($type_icons[$animal['type']] ?? 'fa-paw'); ?>"></i> <?php echo esc_html($type_labels[$animal['type']] ?? $animal['type']); ?></span>
+                    <span class="lapki-card__tag"><i class="fas <?php echo esc_attr($type_icons[$animal['type']] ?? 'fa-paw'); ?>"></i> <?php echo esc_html(Lapki_Main::get_animal_type_label($animal['type'], $animal['gender'] ?? '', true)); ?></span>
                     <?php if (!empty($animal['age'])) : ?><span class="lapki-card__tag lapki-card__tag--age"><?php echo esc_html($age_labels[$animal['age']] ?? $animal['age']); ?></span><?php endif; ?>
                     <?php if (!empty($animal['gender'])) : ?><span class="lapki-card__tag lapki-card__tag--gender"><?php echo esc_html($gender_labels[$animal['gender']] ?? $animal['gender']); ?></span><?php endif; ?>
                     <?php if (!empty($animal['address_city'])) : ?>
