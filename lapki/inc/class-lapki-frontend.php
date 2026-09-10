@@ -144,6 +144,12 @@ class Lapki_Frontend {
         // (окремо від /js/animals.js — той лежить поза плагіном, поза git;
         // цей рендериться через WP-роутинг, тож лишається в git разом з рештою плагіна)
         add_rewrite_rule('^integration/lapki\.js$', 'index.php?lapki_page=integration_widget', 'top');
+
+        // Розділ "Допомога" (/help/) — CPT lapki_help, але власний rewrite
+        // (не нативний permalink CPT), той самий підхід, що й в усього
+        // іншого фронтенду плагіна. Див. Lapki_Help — 'publicly_queryable' => false.
+        add_rewrite_rule('^help/?$', 'index.php?lapki_page=help_archive', 'top');
+        add_rewrite_rule('^help/([^/]+)/?$', 'index.php?lapki_page=help_single&lapki_help_slug=$matches[1]', 'top');
     }
 
     /**
@@ -179,6 +185,7 @@ class Lapki_Frontend {
         $vars[] = 'lapki_about_lang';
         $vars[] = 'lapki_blog_lang';
         $vars[] = 'lapki_blog_slug';
+        $vars[] = 'lapki_help_slug';
         return $vars;
     }
 
@@ -210,6 +217,8 @@ class Lapki_Frontend {
             'about' => 'about.php',
             'blog_archive' => 'blog.php',
             'blog_single' => 'single-blog.php',
+            'help_archive' => 'archive-help.php',
+            'help_single' => 'single-help.php',
         ];
 
         if (empty($map[$page])) {
@@ -403,6 +412,25 @@ class Lapki_Frontend {
     }
 
     /**
+     * Стаття допомоги для поточного запиту (/help/{slug}/) — кешована на
+     * запит, той самий підхід, що й get_current_blog_post()/get_current_about_post().
+     */
+    public static function get_current_help_post() {
+        static $cache = [];
+        $slug = sanitize_title(get_query_var('lapki_help_slug'));
+
+        if (!$slug) {
+            return null;
+        }
+
+        if (!array_key_exists($slug, $cache)) {
+            $cache[$slug] = Lapki_Help::get_post_by_slug($slug);
+        }
+
+        return $cache[$slug];
+    }
+
+    /**
      * Дані поточної тварини — кешовані на запит (title/description/canonical/OG
      * усі хуки wp_head інакше окремо смикали б Lapki_Animal::get() кожен)
      */
@@ -549,6 +577,13 @@ class Lapki_Frontend {
             case 'blog_single':
                 $post = self::get_current_blog_post();
                 return $post ? $post->post_title . ' — ' . $site_name : $title;
+
+            case 'help_archive':
+                return _x('Допомога', 'help section', 'lapki') . ' — ' . $site_name;
+
+            case 'help_single':
+                $post = self::get_current_help_post();
+                return $post ? $post->post_title . ' — ' . $site_name : $title;
         }
 
         return $title;
@@ -604,6 +639,16 @@ class Lapki_Frontend {
                 return !empty($post->post_excerpt)
                     ? wp_strip_all_tags($post->post_excerpt)
                     : wp_trim_words(wp_strip_all_tags($post->post_content), 30);
+
+            case 'help_archive':
+                return 'Відповіді на поширені запитання про Lapki — тварин, притулки та роботу з платформою.';
+
+            case 'help_single':
+                $post = self::get_current_help_post();
+                if (!$post) {
+                    return '';
+                }
+                return wp_trim_words(wp_strip_all_tags($post->post_content), 30);
         }
 
         return '';
@@ -672,6 +717,13 @@ class Lapki_Frontend {
             case 'blog_single':
                 $post = self::get_current_blog_post();
                 return $post ? self::get_blog_post_url($post) : '';
+
+            case 'help_archive':
+                return home_url('/help/');
+
+            case 'help_single':
+                $post = self::get_current_help_post();
+                return $post ? Lapki_Help::get_post_url($post) : '';
         }
 
         return '';
@@ -763,6 +815,18 @@ class Lapki_Frontend {
                 }
                 break;
 
+            case 'help_archive':
+                $title = _x('Допомога', 'help section', 'lapki');
+                break;
+
+            case 'help_single':
+                $post = self::get_current_help_post();
+                if (!$post) {
+                    return;
+                }
+                $title = $post->post_title;
+                break;
+
             default:
                 return;
         }
@@ -777,7 +841,7 @@ class Lapki_Frontend {
             ];
         }
 
-        echo '<meta property="og:type" content="' . ($page === 'blog_single' ? 'article' : 'website') . '">' . "\n";
+        echo '<meta property="og:type" content="' . (in_array($page, ['blog_single', 'help_single'], true) ? 'article' : 'website') . '">' . "\n";
         echo '<meta property="og:site_name" content="' . esc_attr($site_name) . '">' . "\n";
         // Динамічно (а не завжди uk_UA) — інакше /en/about/ оголошував би
         // локаль uk_UA для сторінки, вміст якої насправді англійською.

@@ -2207,3 +2207,127 @@ msgstr "Це чернетка — публікацію бачите лише в�
 #: header.php:69
 msgid "Допомога"
 msgstr "Допомога"
+
+#: inc/class-lapki-frontend.php:582
+#: inc/class-lapki-frontend.php:819
+#: templates/archive-help.php:51
+#: footer.php:31
+msgctxt "help section"
+msgid "Допомога"
+msgstr "Допомога"
+
+#: inc/class-lapki-help.php:45
+#: inc/class-lapki-help.php:56
+#: inc/class-lapki-help.php:57
+msgid "Статті допомоги"
+msgstr "Статті допомоги"
+
+#: inc/class-lapki-help.php:46
+msgid "Стаття допомоги"
+msgstr "Стаття допомоги"
+
+#: inc/class-lapki-help.php:47
+msgid "Додати статтю"
+msgstr "Додати статтю"
+
+#: inc/class-lapki-help.php:48
+msgid "Нова стаття допомоги"
+msgstr "Нова стаття допомоги"
+
+#: inc/class-lapki-help.php:49
+msgid "Редагувати статтю допомоги"
+msgstr "Редагувати статтю допомоги"
+
+#: inc/class-lapki-help.php:50
+msgid "Нова стаття"
+msgstr "Нова стаття"
+
+#: inc/class-lapki-help.php:51
+msgid "Переглянути статтю"
+msgstr "Переглянути статтю"
+
+#: inc/class-lapki-help.php:52
+msgid "Переглянути статті"
+msgstr "Переглянути статті"
+
+#: inc/class-lapki-help.php:53
+msgid "Пошук статей допомоги"
+msgstr "Пошук статей допомоги"
+
+#: inc/class-lapki-help.php:54
+msgid "Статей не знайдено"
+msgstr "Статей не знайдено"
+
+#: inc/class-lapki-help.php:55
+msgid "У кошику статей не знайдено"
+msgstr "У кошику статей не знайдено"
+
+#: inc/class-lapki-help.php:78
+#: inc/class-lapki-help.php:88
+#: inc/class-lapki-help.php:107
+#: inc/class-lapki-help.php:108
+msgid "Категорії допомоги"
+msgstr "Категорії допомоги"
+
+#: inc/class-lapki-help.php:79
+msgid "Категорія допомоги"
+msgstr "Категорія допомоги"
+
+#: inc/class-lapki-help.php:80
+msgid "Пошук категорій"
+msgstr "Пошук категорій"
+
+#: inc/class-lapki-help.php:81
+msgid "Усі категорії"
+msgstr "Усі категорії"
+
+#: inc/class-lapki-help.php:82
+msgid "Батьківська категорія"
+msgstr "Батьківська категорія"
+
+#: inc/class-lapki-help.php:83
+msgid "Батьківська категорія:"
+msgstr "Батьківська категорія:"
+
+#: inc/class-lapki-help.php:84
+msgid "Редагувати категорію"
+msgstr "Редагувати категорію"
+
+#: inc/class-lapki-help.php:85
+msgid "Оновити категорію"
+msgstr "Оновити категорію"
+
+#: inc/class-lapki-help.php:86
+msgid "Додати нову категорію"
+msgstr "Додати нову категорію"
+
+#: inc/class-lapki-help.php:87
+msgid "Назва нової категорії"
+msgstr "Назва нової категорії"
+
+#: templates/archive-help.php:31
+#: templates/single-help.php:41
+msgid "Зміст"
+msgstr "Зміст"
+
+#: templates/archive-help.php:35
+msgid "Статей поки немає."
+msgstr "Статей поки немає."
+
+#: templates/archive-help.php:38
+#: templates/single-help.php:45
+msgid "Без категорії"
+msgstr "Без категорії"
+
+#: templates/archive-help.php:52
+msgid "Оберіть статтю зі списку зліва, щоб переглянути її."
+msgstr "Оберіть статтю зі списку зліва, щоб переглянути її."
+
+#: templates/single-help.php:26
+msgid "← Усі статті допомоги"
+msgstr "← Усі статті допомоги"
+
+#: templates/single-help.php:61
+msgid "Це чернетка — статтю бачите лише ви як адміністратор. Опублікуйте її в wp-admin, коли текст буде готовий."
+msgstr "Це чернетка — статтю бачите лише ви як адміністратор. Опублікуйте її в wp-admin, коли текст буде готовий."
+

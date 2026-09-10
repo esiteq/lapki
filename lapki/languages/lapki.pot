@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-10T18:39:57+00:00\n"
+"POT-Creation-Date: 2026-09-10T19:18:17+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.10.0\n"
 "X-Domain: lapki\n"
@@ -892,6 +892,102 @@ msgstr ""
 msgid "Додати відео"
 msgstr ""
 
+#: inc/class-lapki-frontend.php:582
+#: inc/class-lapki-frontend.php:819
+#: templates/archive-help.php:51
+msgctxt "help section"
+msgid "Допомога"
+msgstr ""
+
+#: inc/class-lapki-help.php:45
+#: inc/class-lapki-help.php:56
+#: inc/class-lapki-help.php:57
+msgid "Статті допомоги"
+msgstr ""
+
+#: inc/class-lapki-help.php:46
+msgid "Стаття допомоги"
+msgstr ""
+
+#: inc/class-lapki-help.php:47
+msgid "Додати статтю"
+msgstr ""
+
+#: inc/class-lapki-help.php:48
+msgid "Нова стаття допомоги"
+msgstr ""
+
+#: inc/class-lapki-help.php:49
+msgid "Редагувати статтю допомоги"
+msgstr ""
+
+#: inc/class-lapki-help.php:50
+msgid "Нова стаття"
+msgstr ""
+
+#: inc/class-lapki-help.php:51
+msgid "Переглянути статтю"
+msgstr ""
+
+#: inc/class-lapki-help.php:52
+msgid "Переглянути статті"
+msgstr ""
+
+#: inc/class-lapki-help.php:53
+msgid "Пошук статей допомоги"
+msgstr ""
+
+#: inc/class-lapki-help.php:54
+msgid "Статей не знайдено"
+msgstr ""
+
+#: inc/class-lapki-help.php:55
+msgid "У кошику статей не знайдено"
+msgstr ""
+
+#: inc/class-lapki-help.php:78
+#: inc/class-lapki-help.php:88
+#: inc/class-lapki-help.php:107
+#: inc/class-lapki-help.php:108
+msgid "Категорії допомоги"
+msgstr ""
+
+#: inc/class-lapki-help.php:79
+msgid "Категорія допомоги"
+msgstr ""
+
+#: inc/class-lapki-help.php:80
+msgid "Пошук категорій"
+msgstr ""
+
+#: inc/class-lapki-help.php:81
+msgid "Усі категорії"
+msgstr ""
+
+#: inc/class-lapki-help.php:82
+msgid "Батьківська категорія"
+msgstr ""
+
+#: inc/class-lapki-help.php:83
+msgid "Батьківська категорія:"
+msgstr ""
+
+#: inc/class-lapki-help.php:84
+msgid "Редагувати категорію"
+msgstr ""
+
+#: inc/class-lapki-help.php:85
+msgid "Оновити категорію"
+msgstr ""
+
+#: inc/class-lapki-help.php:86
+msgid "Додати нову категорію"
+msgstr ""
+
+#: inc/class-lapki-help.php:87
+msgid "Назва нової категорії"
+msgstr ""
+
 #: inc/class-lapki-i18n.php:258
 msgid "Мова сайту"
 msgstr ""
@@ -1147,27 +1243,27 @@ msgstr ""
 msgid "Цей email вже використовується іншим акаунтом"
 msgstr ""
 
-#: lapki.php:393
+#: lapki.php:396
 msgid "кішка"
 msgstr ""
 
-#: lapki.php:393
+#: lapki.php:396
 msgid "кіт"
 msgstr ""
 
-#: lapki.php:396
+#: lapki.php:399
 msgid "собака"
 msgstr ""
 
-#: lapki.php:397
+#: lapki.php:400
 msgid "птах"
 msgstr ""
 
-#: lapki.php:398
+#: lapki.php:401
 msgid "кролик"
 msgstr ""
 
-#: lapki.php:399
+#: lapki.php:402
 msgid "інше"
 msgstr ""
 
@@ -1456,6 +1552,24 @@ msgstr ""
 
 #: templates/archive-animals.php:73
 msgid "км від мого населеного пункта"
+msgstr ""
+
+#: templates/archive-help.php:31
+#: templates/single-help.php:41
+msgid "Зміст"
+msgstr ""
+
+#: templates/archive-help.php:35
+msgid "Статей поки немає."
+msgstr ""
+
+#: templates/archive-help.php:38
+#: templates/single-help.php:45
+msgid "Без категорії"
+msgstr ""
+
+#: templates/archive-help.php:52
+msgid "Оберіть статтю зі списку зліва, щоб переглянути її."
 msgstr ""
 
 #: templates/archive-organizations.php:39
@@ -2021,6 +2135,7 @@ msgid "Контакти поки не вказані — перегляньте 
 msgstr ""
 
 #: templates/single-blog.php:21
+#: templates/single-help.php:25
 msgid "Публікацію не знайдено"
 msgstr ""
 
@@ -2038,6 +2153,14 @@ msgstr ""
 
 #: templates/single-blog.php:43
 msgid "Це чернетка — публікацію бачите лише ви як автор/адміністратор. Опублікуйте її в wp-admin → Записи, коли текст буде готовий."
+msgstr ""
+
+#: templates/single-help.php:26
+msgid "← Усі статті допомоги"
+msgstr ""
+
+#: templates/single-help.php:61
+msgid "Це чернетка — статтю бачите лише ви як адміністратор. Опублікуйте її в wp-admin, коли текст буде готовий."
 msgstr ""
 
 #: templates/single-organization.php:22
@@ -2062,5 +2185,10 @@ msgid "Наразі немає тварин на прилаштування."
 msgstr ""
 
 #: header.php:69
+msgid "Допомога"
+msgstr ""
+
+#: footer.php:31
+msgctxt "help section"
 msgid "Допомога"
 msgstr ""

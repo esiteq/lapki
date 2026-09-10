@@ -26,7 +26,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LAPKI_VERSION', '2.0.45');
+define('LAPKI_VERSION', '2.0.46');
 define('LAPKI_PLUGIN_FILE', __FILE__);
 define('LAPKI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LAPKI_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -41,6 +41,9 @@ require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-migrations.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-rest-api.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-ai.php';
 Lapki_AI_Manager::init();
+
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-help.php';
+Lapki_Help::init();
 
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-template-loader.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-frontend.php';
