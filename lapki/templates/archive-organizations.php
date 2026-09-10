@@ -23,10 +23,10 @@ $organizations = Lapki_Organization::search([
 ]);
 
 $type_labels = [
-    'individual' => 'Приватна особа',
-    'shelter' => 'Притулок',
-    'rescue' => 'Волонтерська організація',
-    'vet_clinic' => 'Ветклініка',
+    'individual' => __('Приватна особа', 'lapki'),
+    'shelter' => __('Притулок', 'lapki'),
+    'rescue' => __('Волонтерська організація', 'lapki'),
+    'vet_clinic' => __('Ветклініка', 'lapki'),
 ];
 
 // Циклічна палітра кольорів боксів — та сама, що й для тегів картки тварини
@@ -36,13 +36,13 @@ $pin_svg = '<svg class="lapki-pin-icon" viewBox="0 0 24 24" width="12" height="1
 
 <section class="py-5">
     <div class="container">
-        <h1 class="h3 fw-bold mb-4">Організації та притулки</h1>
+        <h1 class="h3 fw-bold mb-4"><?php esc_html_e('Організації та притулки', 'lapki'); ?></h1>
 
         <?php if (!empty($cities)) : ?>
         <div class="d-flex flex-wrap gap-2 mb-4">
             <a href="<?php echo esc_url(remove_query_arg('city')); ?>"
                class="lapki-card__tag lapki-card__tag--filter lapki-card__tag--location<?php echo $selected_city === '' ? ' is-active' : ''; ?>">
-                Всі міста
+                <?php esc_html_e('Всі міста', 'lapki'); ?>
             </a>
             <?php foreach ($cities as $i => $c) :
                 $color = $tag_colors[$i % count($tag_colors)];
@@ -60,13 +60,23 @@ $pin_svg = '<svg class="lapki-pin-icon" viewBox="0 0 24 24" width="12" height="1
             <?php if (empty($organizations)) : ?>
                 <p class="text-muted">
                     <?php echo $selected_city !== ''
-                        ? 'У місті ' . esc_html($selected_city) . ' організацій поки немає.'
-                        : 'Організацій поки немає.'; ?>
+                        /* translators: %s: назва міста */
+                        ? sprintf(esc_html__('У місті %s організацій поки немає.', 'lapki'), esc_html($selected_city))
+                        : esc_html__('Організацій поки немає.', 'lapki'); ?>
                 </p>
             <?php else : foreach ($organizations as $org) : ?>
                 <div class="col-md-6 col-lg-4">
-                    <a href="<?php echo esc_url(home_url('/organizations/' . (int) $org['id'] . '/')); ?>" class="card border-0 shadow-sm h-100 text-decoration-none">
-                        <div class="card-body">
+                    <a href="<?php echo esc_url(home_url('/organizations/' . (int) $org['id'] . '/')); ?>" class="lapki-card text-decoration-none">
+                        <div class="lapki-card__img" style="aspect-ratio:auto;height:160px;">
+                            <?php if (!empty($org['primary_photo']['thumbnail_url'])) : ?>
+                                <img src="<?php echo esc_url($org['primary_photo']['thumbnail_url']); ?>" alt="<?php echo esc_attr($org['name']); ?>" loading="lazy">
+                            <?php else : ?>
+                                <div class="lapki-card__img-placeholder">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="lapki-card__body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h2 class="h6 fw-bold mb-0"><?php echo esc_html($org['name']); ?></h2>
                                 <?php if (!empty($org['is_verified'])) : ?>
@@ -77,7 +87,15 @@ $pin_svg = '<svg class="lapki-pin-icon" viewBox="0 0 24 24" width="12" height="1
                             <?php if (!empty($org['city'])) : ?>
                                 <p class="small text-muted mb-2"><i class="fas fa-map-marker-alt"></i> <?php echo esc_html($org['city']); ?></p>
                             <?php endif; ?>
-                            <p class="small mb-0"><?php echo (int) $org['animals_count']; ?> тварин на прилаштування</p>
+                            <p class="small mb-0">
+                                <?php
+                                printf(
+                                    /* translators: %d: кількість тварин */
+                                    esc_html(_n('%d тварина на прилаштування', '%d тварин на прилаштування', (int) $org['animals_count'], 'lapki')),
+                                    (int) $org['animals_count']
+                                );
+                                ?>
+                            </p>
                         </div>
                     </a>
                 </div>

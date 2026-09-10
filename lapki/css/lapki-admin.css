@@ -228,3 +228,57 @@
     width: 140px;
     padding: 12px 10px 12px 0;
 }
+
+/* Модальне вікно email-шаблонів */
+#lapki-email-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100000;
+}
+
+.lapki-email-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.lapki-email-modal-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+    padding: 24px 30px;
+    width: 640px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.lapki-email-modal-box h2 {
+    margin-top: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.lapki-email-modal-box .form-table th {
+    width: 140px;
+    padding: 12px 10px 12px 0;
+}
+
+/* Підсвічування незаповнених обов'язкових полів при кліку на "Покращити за
+   допомогою ШІ" — той самий сигнал, що й при спробі зберегти форму, лише
+   без нативної submit-валідації браузера (адмінка не на Bootstrap). */
+.lapki-field-invalid,
+.lapki-field-invalid .ts-control {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 1px #dc3545;
+}

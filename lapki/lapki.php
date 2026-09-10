@@ -26,16 +26,22 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LAPKI_VERSION', '2.0.10');
+define('LAPKI_VERSION', '2.0.45');
 define('LAPKI_PLUGIN_FILE', __FILE__);
 define('LAPKI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LAPKI_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Include required files
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-i18n.php';
+Lapki_I18n::init();
+
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-models.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-roles.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-migrations.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-rest-api.php';
+require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-ai.php';
+Lapki_AI_Manager::init();
+
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-template-loader.php';
 require_once LAPKI_PLUGIN_DIR . 'inc/class-lapki-frontend.php';
 Lapki_Frontend::init();
@@ -80,6 +86,7 @@ class Lapki_Main {
     const MEDIA_THUMBNAILS_DIR = 'thumbnails';
     const MEDIA_VIDEOS_DIR = 'videos';
     const MEDIA_ORG_DIR = 'org';
+    const MEDIA_USER_DIR = 'user';
     
     /**
      * Розміри thumbnails
@@ -155,14 +162,19 @@ class Lapki_Main {
      * окрему підпапку uploads/lapki/org/ — фото притулків не змішуються
      * з фото тварин (uploads/lapki/images/, дефолтна поведінка, як і раніше).
      */
+    private static function get_scope_dir($scope) {
+        if ($scope === 'organization') {
+            return self::MEDIA_ORG_DIR . '/';
+        }
+        if ($scope === 'user') {
+            return self::MEDIA_USER_DIR . '/';
+        }
+        return '';
+    }
+
     public static function get_images_path($scope = 'animal') {
         $base = trailingslashit(self::get_media_base_path());
-
-        if ($scope === 'organization') {
-            return $base . self::MEDIA_ORG_DIR . '/' . self::MEDIA_IMAGES_DIR;
-        }
-
-        return $base . self::MEDIA_IMAGES_DIR;
+        return $base . self::get_scope_dir($scope) . self::MEDIA_IMAGES_DIR;
     }
 
     /**
@@ -170,12 +182,7 @@ class Lapki_Main {
      */
     public static function get_images_url($scope = 'animal') {
         $base = trailingslashit(self::get_media_base_url());
-
-        if ($scope === 'organization') {
-            return $base . self::MEDIA_ORG_DIR . '/' . self::MEDIA_IMAGES_DIR;
-        }
-
-        return $base . self::MEDIA_IMAGES_DIR;
+        return $base . self::get_scope_dir($scope) . self::MEDIA_IMAGES_DIR;
     }
 
     /**
@@ -183,12 +190,7 @@ class Lapki_Main {
      */
     public static function get_thumbnails_path($scope = 'animal') {
         $base = trailingslashit(self::get_media_base_path());
-
-        if ($scope === 'organization') {
-            return $base . self::MEDIA_ORG_DIR . '/' . self::MEDIA_THUMBNAILS_DIR;
-        }
-
-        return $base . self::MEDIA_THUMBNAILS_DIR;
+        return $base . self::get_scope_dir($scope) . self::MEDIA_THUMBNAILS_DIR;
     }
 
     /**
@@ -196,12 +198,7 @@ class Lapki_Main {
      */
     public static function get_thumbnails_url($scope = 'animal') {
         $base = trailingslashit(self::get_media_base_url());
-
-        if ($scope === 'organization') {
-            return $base . self::MEDIA_ORG_DIR . '/' . self::MEDIA_THUMBNAILS_DIR;
-        }
-
-        return $base . self::MEDIA_THUMBNAILS_DIR;
+        return $base . self::get_scope_dir($scope) . self::MEDIA_THUMBNAILS_DIR;
     }
 
     /**
@@ -209,7 +206,7 @@ class Lapki_Main {
      *
      * @param string $filename Назва файлу (vasya_cat.jpg)
      * @param bool $thumbnail Чи потрібен thumbnail
-     * @param string $scope 'animal' (дефолт) або 'organization' — окрема тека
+     * @param string $scope 'animal' (дефолт), 'organization' або 'user' — окремі теки
      * @return string Повний URL
      */
     public static function get_image_url($filename, $thumbnail = false, $scope = 'animal') {
@@ -229,7 +226,7 @@ class Lapki_Main {
      *
      * @param string $filename Назва файлу (vasya_cat.jpg)
      * @param bool $thumbnail Чи потрібен thumbnail
-     * @param string $scope 'animal' (дефолт) або 'organization' — окрема тека
+     * @param string $scope 'animal' (дефолт), 'organization' або 'user' — окремі теки
      * @return string Повний шлях
      */
     public static function get_image_path($filename, $thumbnail = false, $scope = 'animal') {
@@ -254,6 +251,8 @@ class Lapki_Main {
             self::get_thumbnails_path(),
             self::get_images_path('organization'),
             self::get_thumbnails_path('organization'),
+            self::get_images_path('user'),
+            self::get_thumbnails_path('user'),
             trailingslashit(self::get_media_base_path()) . self::MEDIA_VIDEOS_DIR
         ];
         
@@ -391,9 +390,14 @@ class Lapki_Main {
      */
     public static function get_animal_type_label($type, $gender = '', $capitalize = false) {
         if ($type === 'cat') {
-            $label = ($gender === 'female') ? 'кішка' : 'кіт';
+            $label = ($gender === 'female') ? __('кішка', 'lapki') : __('кіт', 'lapki');
         } else {
-            $labels = ['dog' => 'собака', 'bird' => 'птах', 'rabbit' => 'кролик', 'other' => 'інше'];
+            $labels = [
+                'dog'    => __('собака', 'lapki'),
+                'bird'   => __('птах', 'lapki'),
+                'rabbit' => __('кролик', 'lapki'),
+                'other'  => __('інше', 'lapki'),
+            ];
             $label = $labels[$type] ?? $type;
         }
 
@@ -402,6 +406,197 @@ class Lapki_Main {
         }
 
         return $label;
+    }
+
+    /**
+     * Область (wp_lapki_geo.oblast, а звідти — address_state/state) зберігається
+     * у прикметниковій формі без іменника ("Запорізька"), крім АР Крим (уже
+     * повна назва) — на відображенні дописуємо "область" для завершеної фрази.
+     */
+    public static function format_oblast($oblast) {
+        if (empty($oblast)) {
+            return $oblast;
+        }
+        if (mb_strpos($oblast, 'область') !== false || mb_strpos($oblast, 'Республіка') !== false) {
+            return $oblast;
+        }
+        return $oblast . ' область';
+    }
+
+    /**
+     * Обласний центр кожної області (+АР Крим) — фіксований, стабільний
+     * список 24 міст (не виводиться алгоритмічно: назва обласного центру не
+     * завжди морфологічно споріднена з назвою області, напр. Кропивницький
+     * у Кіровоградській). Київ і Севастополь — міста зі спеціальним статусом,
+     * не входять до жодної області (у wp_lapki_geo їхнє поле oblast порожнє),
+     * тому в цей список не додаються — обробляються окремо нижче.
+     */
+    private const OBLAST_CENTERS = [
+        'Вінницька' => 'Вінниця',
+        'Волинська' => 'Луцьк',
+        'Дніпропетровська' => 'Дніпро',
+        'Донецька' => 'Донецьк',
+        'Житомирська' => 'Житомир',
+        'Закарпатська' => 'Ужгород',
+        'Запорізька' => 'Запоріжжя',
+        'Івано-Франківська' => 'Івано-Франківськ',
+        'Кіровоградська' => 'Кропивницький',
+        'Луганська' => 'Луганськ',
+        'Львівська' => 'Львів',
+        'Миколаївська' => 'Миколаїв',
+        'Одеська' => 'Одеса',
+        'Полтавська' => 'Полтава',
+        'Рівненська' => 'Рівне',
+        'Сумська' => 'Суми',
+        'Тернопільська' => 'Тернопіль',
+        'Харківська' => 'Харків',
+        'Херсонська' => 'Херсон',
+        'Хмельницька' => 'Хмельницький',
+        'Черкаська' => 'Черкаси',
+        'Чернівецька' => 'Чернівці',
+        'Чернігівська' => 'Чернігів',
+        'Автономна Республіка Крим' => 'Сімферополь',
+    ];
+
+    /**
+     * Населений пункт — обласний центр? Звіряємо ОДНОЧАСНО назву, область і
+     * тип 'місто' (не лише назву+область) — у довіднику є села-омоніми
+     * (напр. два села "Запоріжжя" в самій Запорізькій області, крім міста).
+     */
+    private static function is_oblast_center($name, $oblast, $type) {
+        return $type === 'місто' && ($oblast === '' || (self::OBLAST_CENTERS[$oblast] ?? null) === $name);
+    }
+
+    /**
+     * Український топонім (назва населеного пункту) → можливі "основи" для
+     * зіставлення з прикметниковою формою назви громади. Враховує типові
+     * чергування приголосних перед суфіксом -ськ- (класична палаталізація
+     * к↔ц, г↔з, х↔с: Кропивницький/Кропивницька, Запоріжжя/Запорізька).
+     */
+    private static function toponym_stems($name) {
+        $stems = [$name];
+        foreach (['ий', 'а', 'я', 'о', 'ів', 'е', 'ь'] as $suffix) {
+            $suffix_len = mb_strlen($suffix, 'UTF-8');
+            if (mb_substr($name, -$suffix_len, null, 'UTF-8') === $suffix
+                && mb_strlen($name, 'UTF-8') > $suffix_len + 2) {
+                $stems[] = mb_substr($name, 0, -$suffix_len, 'UTF-8');
+            }
+        }
+
+        $alternations = [];
+        foreach ($stems as $stem) {
+            $last = mb_substr($stem, -1, null, 'UTF-8');
+            $rest = mb_substr($stem, 0, -1, 'UTF-8');
+            if ($last === 'к') $alternations[] = $rest . 'ц';
+            if ($last === 'г') $alternations[] = $rest . 'з';
+            if ($last === 'х') $alternations[] = $rest . 'с';
+            if ($last === 'й') $alternations[] = $rest;
+        }
+
+        return array_unique(array_merge($stems, $alternations));
+    }
+
+    /**
+     * UTF-8-безпечна відстань Левенштейна (вбудований levenshtein() у PHP
+     * рахує байти, а не символи — для кирилиці це майже вдвічі завищує
+     * відстань і ламає поріг збігу нижче).
+     */
+    private static function mb_levenshtein($a, $b) {
+        $a = mb_str_split(mb_strtolower($a, 'UTF-8'));
+        $b = mb_str_split(mb_strtolower($b, 'UTF-8'));
+        $la = count($a);
+        $lb = count($b);
+        if ($la === 0) return $lb;
+        if ($lb === 0) return $la;
+
+        $prev = range(0, $lb);
+        for ($i = 1; $i <= $la; $i++) {
+            $cur = [$i];
+            for ($j = 1; $j <= $lb; $j++) {
+                $cost = ($a[$i - 1] === $b[$j - 1]) ? 0 : 1;
+                $cur[$j] = min($prev[$j] + 1, $cur[$j - 1] + 1, $prev[$j - 1] + $cost);
+            }
+            $prev = $cur;
+        }
+        return $prev[$lb];
+    }
+
+    /**
+     * Населений пункт — адміністративний центр СВОЄЇ громади (районний
+     * центр — після реформи 2020 року громаду завжди називають за її
+     * центром)? Довідник не містить явного прапорця "центр громади", тож
+     * визначаємо зіставленням назви населеного пункту з прикметниковою
+     * формою назви громади (з урахуванням чергувань приголосних вище) —
+     * зважений поріг 3 підібраний і перевірений на всіх 29711 записах
+     * довідника: 872/924 громад з міським населеним пунктом розпізнаються
+     * однозначно, решта (переважно складені назви на кшталт "Кривий Ріг" →
+     * "Криворізька", які прямий підрахунок стемів не покриває, і кілька
+     * історичних кримських назв) — безпечно деградують до відображення й
+     * назви громади (тобто просто трохи докладніший підпис, не помилка).
+     */
+    private static function is_hromada_center($settlement_name, $hromada) {
+        if (empty($hromada)) {
+            return false;
+        }
+
+        $hromada_stems = [$hromada];
+        foreach (['ська', 'цька', 'зька', 'ка', 'а'] as $suffix) {
+            $suffix_len = mb_strlen($suffix, 'UTF-8');
+            if (mb_substr($hromada, -$suffix_len, null, 'UTF-8') === $suffix) {
+                $hromada_stems[] = mb_substr($hromada, 0, -$suffix_len, 'UTF-8');
+            }
+        }
+
+        $best = PHP_INT_MAX;
+        foreach (self::toponym_stems($settlement_name) as $candidate) {
+            foreach ($hromada_stems as $hromada_stem) {
+                $best = min($best, self::mb_levenshtein($candidate, $hromada_stem));
+            }
+        }
+
+        return $best <= 3;
+    }
+
+    /**
+     * Підпис місцезнаходження тварини/організації за трьома рівнями:
+     * обласний центр — лише назва; районний центр — назва + область;
+     * інше (звичайний населений пункт громади) — назва + область + громада.
+     * Потребує довідникового katottg (щоб знати область/громаду/тип) — для
+     * старих записів без нього (вільний текст до впровадження довідника)
+     * лишається стара поведінка: назва (+ область, якщо відома окремо).
+     */
+    public static function format_city_location($city_name, $katottg_code, $fallback_oblast = '') {
+        if (empty($city_name)) {
+            return '';
+        }
+
+        $geo = !empty($katottg_code) ? Lapki_Geo::get_by_katottg_code($katottg_code) : null;
+
+        if (!$geo) {
+            return !empty($fallback_oblast)
+                ? $city_name . ', ' . self::format_oblast($fallback_oblast)
+                : $city_name;
+        }
+
+        return self::format_city_location_from_geo($geo);
+    }
+
+    /**
+     * Те саме, що format_city_location(), але без повторного SQL-запиту до
+     * wp_lapki_geo — для викликів, де рядок довідника вже під рукою (напр.
+     * Lapki_Animal::maybe_fill_coordinates_from_city(), яка й так підтягує
+     * $geo для координат/області).
+     */
+    public static function format_city_location_from_geo($geo) {
+        if (self::is_oblast_center($geo['name'], $geo['oblast'], $geo['type'])) {
+            return $geo['name'];
+        }
+
+        if (self::is_hromada_center($geo['name'], $geo['hromada'])) {
+            return $geo['name'] . ', ' . self::format_oblast($geo['oblast']);
+        }
+
+        return $geo['name'] . ', ' . self::format_oblast($geo['oblast']) . ', ' . $geo['hromada'] . ' громада';
     }
 
 }

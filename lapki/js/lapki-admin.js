@@ -30,6 +30,7 @@
             this.initOrganizationsList();
             this.initOrganizationForm();
             this.initOrganizationMediaGallery();
+            this.initEmailTemplatesList();
 
             // Завантажити кеш атрибутів перед ініціалізацією
             this.loadAttributesCache(function() {
@@ -67,6 +68,227 @@
         },
 
         /**
+         * Автодоповнення поля "Місто" (Tom Select, довідник КАТОТТГ, wp_lapki_geo).
+         * selectId — видимий <select>, nameInputId/katottgInputId — приховані
+         * поля, що фактично надсилаються з формою (id збігаються зі старими
+         * текстовими інпутами, тож інший код на кшталт geocodeAddress()
+         * продовжує читати їх без змін). КОАТУУ скасовано 2020 року й ніде в
+         * застосунку більше не використовується — ідентифікатор населеного
+         * пункту всюди katottg_code (унікальний ключ довідника, 100% покриття).
+         */
+        initCityAutocomplete: function(selectId, nameInputId, katottgInputId) {
+            const self = this;
+            const selectEl = document.getElementById(selectId);
+            if (!selectEl || typeof TomSelect === 'undefined') return null;
+
+            function formatCity(r) {
+                if (r.type === 'місто' || !r.oblast) return r.type + ' ' + r.name;
+                return r.name + ', ' + r.oblast + ' область, ' + r.hromada + ' громада';
+            }
+
+            let requestSeq = 0;
+
+            return new TomSelect(selectEl, {
+                valueField: 'katottg_code',
+                labelField: 'display',
+                searchField: [],
+                options: [],
+                create: false,
+                maxOptions: 20,
+                placeholder: 'Почніть вводити назву населеного пункту…',
+                render: {
+                    option: (data, escape) => '<div>' + escape(data.display) + '</div>',
+                    item: (data, escape) => '<div>' + escape(data.display) + '</div>',
+                    no_results: () => '<div class="no-results">Нічого не знайдено</div>',
+                    loading: () => ''
+                },
+                load: function(query, callback) {
+                    if (query.length < 2) return callback();
+                    const ts = this;
+                    const seq = ++requestSeq;
+                    self.apiRequest('/geo?query=' + encodeURIComponent(query))
+                        .done(function(data) {
+                            if (seq !== requestSeq) return; // застаріла відповідь — користувач уже ввів інший текст
+                            ts.clearOptions(); // прибрати підказки попередніх запитів (searchField:[] не фільтрує їх сам)
+                            const results = (data && data.data) || [];
+                            callback(results.map(function(r) {
+                                return { katottg_code: r.katottg_code, name: r.name, display: formatCity(r) };
+                            }));
+                        })
+                        .fail(function() { if (seq === requestSeq) callback(); });
+                },
+                onItemAdd: function(value) {
+                    const opt = this.options[value];
+                    $('#' + nameInputId).val(opt ? opt.name : '');
+                    $('#' + katottgInputId).val(value || '');
+                },
+                onItemRemove: function() {
+                    $('#' + nameInputId).val('');
+                    $('#' + katottgInputId).val('');
+                }
+            });
+        },
+
+        /**
+         * Підставити у видимий Tom Select значення, вже завантажене в приховані
+         * поля (режим редагування — дані тварини/організації прийшли з API
+         * ДО ініціалізації автодоповнення чи одразу через setFormValues()).
+         */
+        syncCityFromHidden: function(ts, nameInputId, katottgInputId) {
+            if (!ts) return;
+
+            const name = $('#' + nameInputId).val();
+            const katottg = $('#' + katottgInputId).val();
+
+            if (name && katottg) {
+                ts.addOption({ katottg_code: katottg, name: name, display: name });
+                ts.setValue(katottg, true);
+            }
+        },
+
+        /**
+         * "Покращити за допомогою ШІ" для полів опису (наразі — Опис тварини).
+         * Бекенд сам вирішує, якого ШІ-провайдера викликати (Lapki_AI_Manager) —
+         * тут лише шлемо поточний текст і підставляємо відповідь на місце
+         * старого, з можливістю скасувати (повернути попередній текст).
+         */
+        // Обов'язкові поля форми тварини — якщо якесь порожнє, ШІ не викликаємо.
+        AI_REQUIRED_FIELDS: [
+            { name: 'name', label: 'Кличка' },
+            { name: 'type', label: 'Вид' },
+            { name: 'age', label: 'Вік' },
+            { name: 'gender', label: 'Стать' },
+            { name: 'size', label: 'Розмір' },
+            { name: 'address_city_katottg', label: 'Населений пункт' }
+        ],
+
+        aiFieldSelectedText: function(form, name) {
+            const field = form.elements[name];
+            if (!field) return '';
+            if (field.tagName === 'SELECT') {
+                const opt = field.options[field.selectedIndex];
+                return opt ? opt.text.trim() : '';
+            }
+            return (field.value || '').trim();
+        },
+
+        /**
+         * Підсвітити/зняти підсвітку одного обов'язкового поля червоною
+         * рамкою (.lapki-field-invalid, css/lapki-admin.css). "Населений
+         * пункт" — прихований input, керований Tom Select, тому підсвічуємо
+         * видиму обгортку (self.animalCityTomSelect.wrapper), не сам input.
+         */
+        markAiRequiredField: function(form, name, invalid) {
+            const self = this;
+            const field = form.elements[name];
+            if (!field) return;
+
+            const target = (name === 'address_city_katottg' && self.animalCityTomSelect)
+                ? self.animalCityTomSelect.wrapper
+                : field;
+
+            $(target).toggleClass('lapki-field-invalid', invalid);
+
+            if (invalid && !field.dataset.lapkiAiBound) {
+                field.dataset.lapkiAiBound = '1';
+                $(field).on('input change', function() {
+                    $(target).removeClass('lapki-field-invalid');
+                });
+            }
+        },
+
+        isAiContextComplete: function(form) {
+            const self = this;
+            let complete = true;
+
+            this.AI_REQUIRED_FIELDS.forEach(function(f) {
+                const field = form.elements[f.name];
+                const filled = !!field && (field.value || '').trim() !== '';
+                self.markAiRequiredField(form, f.name, !filled);
+                if (!filled) complete = false;
+            });
+
+            return complete;
+        },
+
+        collectAiContext: function(form) {
+            const self = this;
+            const context = {};
+
+            this.AI_REQUIRED_FIELDS.forEach(function(f) {
+                const value = self.aiFieldSelectedText(form, f.name);
+                if (value) context[f.label] = value;
+            });
+
+            $(form).find('input[type="checkbox"]').each(function() {
+                const $checkbox = $(this);
+                const $label = $(form).find('label[for="' + this.id + '"]');
+                if ($label.length === 0) return;
+                context[$label.text().trim()] = this.checked ? 'так' : 'ні';
+            });
+
+            return context;
+        },
+
+        initAiImproveButtons: function() {
+            const self = this;
+
+            $('.lapki-ai-improve-controls').each(function() {
+                const $controls = $(this);
+                const $textarea = $controls.prev('textarea');
+                const $improveBtn = $controls.find('.lapki-ai-improve-btn');
+                const $undoBtn = $controls.find('.lapki-ai-undo-btn');
+                const $status = $controls.find('.lapki-ai-status');
+                if ($textarea.length === 0 || $improveBtn.length === 0) return;
+
+                const form = $controls.closest('form')[0];
+
+                let previousText = null;
+
+                $improveBtn.on('click', function() {
+                    const text = $textarea.val().trim();
+                    if (!text) {
+                        $status.text('Спочатку напишіть опис.');
+                        return;
+                    }
+
+                    if (form && !self.isAiContextComplete(form)) {
+                        $status.text('Спочатку заповніть всі обов\'язкові поля.');
+                        return;
+                    }
+
+                    const context = form ? self.collectAiContext(form) : {};
+
+                    previousText = $textarea.val();
+                    $improveBtn.prop('disabled', true);
+                    $status.text('Обробляємо…');
+
+                    self.apiRequest('/ai/improve', 'POST', { text: text, context: context })
+                        .done(function(data) {
+                            $textarea.val(data.text);
+                            $undoBtn.show();
+                            $status.text('Готово.');
+                        })
+                        .fail(function(xhr) {
+                            const msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Не вдалося покращити текст.';
+                            $status.text(msg);
+                        })
+                        .always(function() {
+                            $improveBtn.prop('disabled', false);
+                        });
+                });
+
+                $undoBtn.on('click', function() {
+                    if (previousText !== null) {
+                        $textarea.val(previousText);
+                    }
+                    $undoBtn.hide();
+                    $status.text('');
+                });
+            });
+        },
+
+        /**
          * Завантажити кеш атрибутів для перекладів
          */
         loadAttributesCache: function(callback) {
@@ -82,7 +304,7 @@
             }
 
             // Завантажити типи тварин
-            this.apiRequest('/types?lang=uk')
+            this.apiRequest('/types?lang=' + (lapkiAdmin.lang || 'uk'))
                 .done(function(response) {
                     response.types.forEach(function(type) {
                         self.typesCache[type.type] = type.display_name;
@@ -91,7 +313,7 @@
                 .always(checkComplete);
 
             // Завантажити всі атрибути
-            this.apiRequest('/types/all?lang=uk')
+            this.apiRequest('/types/all?lang=' + (lapkiAdmin.lang || 'uk'))
                 .done(function(response) {
                     self.attributesCache = response.attributes || {};
                 })
@@ -151,7 +373,7 @@
             }
 
             // Завантажити породи для типу
-            this.apiRequest('/types/' + type + '/breeds?lang=uk')
+            this.apiRequest('/types/' + type + '/breeds?lang=' + (lapkiAdmin.lang || 'uk'))
                 .done(function(response) {
                     if (response.breeds) {
                         response.breeds.forEach(function(breed) {
@@ -400,6 +622,9 @@
 
             if ($form.length === 0) return;
 
+            this.animalCityTomSelect = this.initCityAutocomplete('address_city_select', 'address_city', 'address_city_katottg');
+            this.initAiImproveButtons();
+
             // Блокувати форму під час завантаження
             this.setFormLoading(true);
 
@@ -457,10 +682,12 @@
             if (animal.type) {
                 this.loadTypeSpecificOptions(animal.type, function() {
                     self.setFormValues(animal);
+                    self.syncCityFromHidden(self.animalCityTomSelect, 'address_city', 'address_city_katottg');
                     self.setFormLoading(false);
                 });
             } else {
                 this.setFormValues(animal);
+                this.syncCityFromHidden(this.animalCityTomSelect, 'address_city', 'address_city_katottg');
                 this.setFormLoading(false);
             }
         },
@@ -480,6 +707,16 @@
                     $field.val(animal[key]);
                 }
             });
+
+            // Додаткова інформація (динамічні поля з довідника атрибутів,
+            // без name — не мапляться в циклі вище). Селекти для поточного
+            // типу вже мають бути відрендерені (renderAdditionalAttrs()
+            // викликається раніше, в колбеку loadTypeSpecificOptions()).
+            if (animal.additional_attributes) {
+                Object.keys(animal.additional_attributes).forEach(function(attrName) {
+                    $('.lapki-extra-attr[data-attr-name="' + attrName + '"]').val(animal.additional_attributes[attrName]);
+                });
+            }
         },
 
         /**
@@ -505,6 +742,66 @@
         },
 
         /**
+         * attr_name з довідника атрибутів, які вже мають власне (захардкоджене)
+         * поле у формі — не дублювати їх у "Додатковій інформації".
+         */
+        STANDARD_ATTR_NAMES: ['species', 'breed', 'age', 'gender', 'size', 'coat', 'color', 'status'],
+
+        /**
+         * Людяна назва для attr_name, якого немає серед стандартних полів —
+         * довідник не зберігає переклад самого ключа (лише його значень),
+         * тож просто прибираємо підкреслення і робимо першу літеру великою.
+         */
+        prettifyAttrName: function(attrName) {
+            const s = String(attrName).replace(/_/g, ' ');
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        },
+
+        /**
+         * Відрендерити блок "Додаткова інформація" — динамічні select-поля
+         * для attr_name з довідника атрибутів (entity=animal, entity_type=обраний
+         * тип), яких немає серед стандартних полів вище. З'являється лише якщо
+         * для поточного типу справді є такі записи в довіднику.
+         */
+        renderAdditionalAttrs: function(attributes) {
+            const self = this;
+            const $section = $('#animal-additional-attrs-section');
+            const $table = $('#animal-additional-attrs-table');
+            $table.empty();
+
+            const extraNames = Object.keys(attributes || {}).filter(function(name) {
+                return self.STANDARD_ATTR_NAMES.indexOf(name) === -1;
+            });
+
+            if (extraNames.length === 0) {
+                $section.hide();
+                return;
+            }
+
+            extraNames.forEach(function(attrName) {
+                const fieldId = 'extra_attr_' + attrName;
+                const $select = $('<select></select>')
+                    .attr('id', fieldId)
+                    .addClass('lapki-extra-attr')
+                    .attr('data-attr-name', attrName)
+                    .append('<option value="">—</option>');
+
+                (attributes[attrName] || []).forEach(function(item) {
+                    $select.append('<option value="' + item.value + '">' + item.display_name + '</option>');
+                });
+
+                const $label = $('<label></label>').attr('for', fieldId).text(self.prettifyAttrName(attrName));
+                const $row = $('<tr></tr>')
+                    .append($('<th></th>').append($label))
+                    .append($('<td></td>').append($select));
+
+                $table.append($row);
+            });
+
+            $section.show();
+        },
+
+        /**
          * Завантажити породи і кольори для конкретного типу
          */
         loadTypeSpecificOptions: function(type, callback) {
@@ -516,7 +813,7 @@
             $('#color_primary').html('<option value="">Виберіть колір</option>');
 
             // Завантажити дані для типу
-            this.apiRequest('/types/' + type + '?lang=uk')
+            this.apiRequest('/types/' + type + '?lang=' + (lapkiAdmin.lang || 'uk'))
                 .done(function(response) {
                     const attributes = response.attributes || {};
 
@@ -535,6 +832,10 @@
                             $('#color_primary').append('<option value="' + item.value + '">' + item.display_name + '</option>');
                         });
                     }
+
+                    // Додаткова інформація — усе, що є в довіднику для цього типу,
+                    // але не входить у стандартні поля форми вище
+                    self.renderAdditionalAttrs(attributes);
 
                     if (callback) callback();
                 })
@@ -559,7 +860,7 @@
             }
 
             // Типи тварин
-            this.apiRequest('/types?lang=uk')
+            this.apiRequest('/types?lang=' + (lapkiAdmin.lang || 'uk'))
                 .done(function(response) {
                     const $select = $('#type');
                     response.types.forEach(function(type) {
@@ -579,7 +880,7 @@
                 .always(checkComplete);
 
             // Загальні атрибути (age, gender, size, coat)
-            this.apiRequest('/types/all?lang=uk')
+            this.apiRequest('/types/all?lang=' + (lapkiAdmin.lang || 'uk'))
                 .done(function(response) {
                     const attributes = response.attributes;
 
@@ -638,6 +939,11 @@
                 return;
             }
 
+            if (!formData.address_city_katottg) {
+                this.showNotice("Поле 'Населений пункт' обов'язкове — оберіть населений пункт зі списку підказок", 'error');
+                return;
+            }
+
             // Показати лоадер
             $('#lapki-animal-form .button-primary').prop('disabled', true).text('Збереження...');
 
@@ -689,6 +995,18 @@
                     data[name] = $field.val();
                 }
             });
+
+            // Додаткова інформація — динамічні поля з довідника атрибутів
+            // (без name, тому в цикл вище не потрапляють) — окремим об'єктом.
+            const additionalAttributes = {};
+            $('.lapki-extra-attr').each(function() {
+                const $field = $(this);
+                const val = $field.val();
+                if (val) {
+                    additionalAttributes[$field.data('attr-name')] = val;
+                }
+            });
+            data.additional_attributes = additionalAttributes;
 
             return data;
         },
@@ -793,8 +1111,6 @@
             // Зібрати адресу
             const address = $('#address1').val();
             const city = $('#address_city').val();
-            const state = $('#address_state').val();
-            const postcode = $('#address_postcode').val();
 
             if (!city && !address) {
                 alert('Введіть хоча б місто або адресу');
@@ -802,7 +1118,7 @@
             }
 
             // Сформувати запит
-            const addressParts = [address, city, state, postcode, 'Україна'].filter(Boolean);
+            const addressParts = [address, city, 'Україна'].filter(Boolean);
             const query = addressParts.join(', ');
 
             // Показати лоадер
@@ -1281,20 +1597,17 @@
             const self = this;
 
             $('#organization-video-add').on('click', function() {
-                const videoUrl = $('#organization-video-url').val().trim();
-                const title = $('#organization-video-title').val().trim();
+                const videoUrls = $('#organization-video-urls').val().trim();
 
-                if (!videoUrl) {
-                    alert("Вкажіть посилання на відео");
+                if (!videoUrls) {
+                    alert('Вставте хоча б одне посилання на відео');
                     return;
                 }
 
                 self.apiRequest('/organizations/' + orgId + '/video', 'POST', {
-                    video_url: videoUrl,
-                    title: title
+                    video_urls: videoUrls
                 }).done(function() {
-                    $('#organization-video-url').val('');
-                    $('#organization-video-title').val('');
+                    $('#organization-video-urls').val('');
                     self.loadOrganizationMediaGallery(orgId);
                 }).fail(function(xhr) {
                     const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Помилка додавання відео';
@@ -1586,6 +1899,91 @@
         },
 
         // =======================================================
+        // EMAIL-ШАБЛОНИ
+        // =======================================================
+
+        /**
+         * Ініціалізація сторінки email-шаблонів. Список рендериться сервером
+         * (WP_List_Table, без AJAX) — JS лише відкриває модалку редагування,
+         * дані беручи з data-* атрибутів посилання "Редагувати" в рядку.
+         */
+        initEmailTemplatesList: function() {
+            const self = this;
+
+            if ($('#lapki-email-templates-page').length === 0) return;
+
+            $('#lapki-email-save').on('click', function() { self.saveEmailTemplate(); });
+            $('#lapki-email-cancel, .lapki-email-modal-backdrop').on('click', function() {
+                $('#lapki-email-modal').hide();
+            });
+
+            $(document).on('click', '.lapki-email-edit', function(e) {
+                e.preventDefault();
+                const $link = $(this);
+                self.showEmailTemplateModal({
+                    id: $link.data('id'),
+                    name: $link.data('name'),
+                    subject: $link.data('subject'),
+                    body: $link.data('body'),
+                    placeholders: $link.data('placeholders'),
+                });
+            });
+        },
+
+        /**
+         * Відкрити модалку редагування шаблону
+         */
+        showEmailTemplateModal: function(t) {
+            $('#lapki-email-modal-title').text('Редагувати: ' + t.name);
+            $('#lapki-email-id').val(t.id);
+            $('#lapki-email-subject').val(t.subject);
+            $('#lapki-email-body').val(t.body);
+
+            const tags = (t.placeholders || '')
+                .split(',')
+                .map(function(s) { return s.trim(); })
+                .filter(Boolean);
+
+            $('#lapki-email-tags-hint').text(
+                tags.length ? 'Доступні мітки: ' + tags.map(function(tag) { return '{' + tag + '}'; }).join(', ') : ''
+            );
+
+            $('#lapki-email-modal').show();
+        },
+
+        /**
+         * Зберегти шаблон (тільки subject/body) і перезавантажити сторінку,
+         * щоб серверний WP_List_Table показав оновлені дані
+         */
+        saveEmailTemplate: function() {
+            const self = this;
+            const id = $('#lapki-email-id').val();
+            const data = {
+                subject: $('#lapki-email-subject').val().trim(),
+                body: $('#lapki-email-body').val().trim(),
+            };
+
+            if (!data.subject || !data.body) {
+                this.showNotice('Заповніть тему і текст листа', 'error');
+                return;
+            }
+
+            $('#lapki-email-save').prop('disabled', true).text('Збереження...');
+
+            this.apiRequest('/email-templates/' + id, 'PUT', data)
+                .done(function() {
+                    window.location.reload();
+                })
+                .fail(function(xhr) {
+                    const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Помилка збереження';
+                    self.showNotice(msg, 'error');
+                })
+                .always(function() {
+                    $('#lapki-email-save').prop('disabled', false).text('Зберегти');
+                });
+        },
+
+        // =======================================================
         // ОРГАНІЗАЦІЇ
         // =======================================================
 
@@ -1685,6 +2083,8 @@
 
             if ($form.length === 0) return;
 
+            this.orgCityTomSelect = this.initCityAutocomplete('city_select', 'city', 'city_katottg');
+
             const orgId = this.getUrlParameter('id');
             if (orgId) {
                 this.setOrgFormLoading(true);
@@ -1706,6 +2106,7 @@
             this.apiRequest('/organizations/' + orgId)
                 .done(function(org) {
                     self.setOrgFormValues(org);
+                    self.syncCityFromHidden(self.orgCityTomSelect, 'city', 'city_katottg');
                     self.setOrgFormLoading(false);
                 })
                 .fail(function(xhr) {
@@ -1763,6 +2164,12 @@
                 return;
             }
 
+            const cityKatottg = $('#city_katottg').val();
+            if (!cityKatottg) {
+                this.showNotice("Поле 'Населений пункт' обов'язкове — оберіть населений пункт зі списку підказок", 'error');
+                return;
+            }
+
             const data = {
                 name: name,
                 type: $('#type').val(),
@@ -1770,6 +2177,7 @@
                 phone: $('#phone').val().trim(),
                 website: $('#website').val().trim(),
                 city: $('#city').val().trim(),
+                city_katottg: cityKatottg,
                 state: $('#state').val().trim(),
                 mission_statement: $('#mission_statement').val().trim(),
                 adoption_policy: $('#adoption_policy').val().trim(),

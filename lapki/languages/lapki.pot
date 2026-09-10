@@ -9,14 +9,14 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-07T08:21:47+00:00\n"
+"POT-Creation-Date: 2026-09-10T18:39:57+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.10.0\n"
 "X-Domain: lapki\n"
 
 #. Plugin Name of the plugin
 #: lapki.php
-#: inc/class-lapki-admin.php:29
+#: inc/class-lapki-admin.php:240
 msgid "Lapki"
 msgstr ""
 
@@ -40,172 +40,2027 @@ msgstr ""
 msgid "https://esiteq.com/"
 msgstr ""
 
-#: inc/class-lapki-admin.php:28
-msgid "Lapki - Тварини"
+#: inc/class-lapki-admin.php:32
+msgid "Призначення"
 msgstr ""
 
-#: inc/class-lapki-admin.php:40
-#: inc/class-lapki-admin.php:41
-msgid "Тварини"
+#: inc/class-lapki-admin.php:33
+#: inc/class-lapki-admin.php:1208
+msgid "Тема (Subject)"
 msgstr ""
 
-#: inc/class-lapki-admin.php:50
-#: inc/class-lapki-admin.php:51
-msgid "Додати тварину"
+#: inc/class-lapki-admin.php:34
+msgid "Дата редагування"
 msgstr ""
 
-#: inc/class-lapki-admin.php:60
-#: inc/class-lapki-admin.php:61
-msgid "Організації"
+#: inc/class-lapki-admin.php:57
+msgid "Немає шаблонів"
 msgstr ""
 
-#: inc/class-lapki-admin.php:70
-#: inc/class-lapki-admin.php:71
-msgid "Атрибути"
+#: inc/class-lapki-admin.php:83
+#: templates/profile.php:229
+#: templates/single-animal.php:81
+msgid "Редагувати"
 msgstr ""
 
-#: inc/class-lapki-admin.php:80
-#: inc/class-lapki-admin.php:119
-msgid "Налаштування Lapki"
-msgstr ""
-
-#: inc/class-lapki-admin.php:81
-msgid "Налаштування"
-msgstr ""
-
-#: inc/class-lapki-admin.php:124
-msgid "Дистанція пошуку за замовчуванням (км)"
-msgstr ""
-
-#: inc/class-lapki-admin.php:128
-msgid "Використовується в геопошуку тварин, якщо клієнт не вказав свою відстань."
+#: inc/class-lapki-admin.php:115
+msgid "Мова (блог)"
 msgstr ""
 
 #: inc/class-lapki-admin.php:132
+msgid "Українська"
+msgstr ""
+
+#: inc/class-lapki-admin.php:135
+msgid "English"
+msgstr ""
+
+#: inc/class-lapki-admin.php:138
+msgid "Визначає, на якій мовній версії /blog/ з'явиться цей запис."
+msgstr ""
+
+#: inc/class-lapki-admin.php:157
+msgid "Пов'язаний запис (переклад)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:160
+msgid "— немає —"
+msgstr ""
+
+#: inc/class-lapki-admin.php:170
+msgid "Виберіть цей самий допис іншою мовою — зв'язок встановлюється в обидва боки автоматично."
+msgstr ""
+
+#: inc/class-lapki-admin.php:218
+msgid "Мова"
+msgstr ""
+
+#: inc/class-lapki-admin.php:239
+msgid "Lapki - Тварини"
+msgstr ""
+
+#: inc/class-lapki-admin.php:251
+#: inc/class-lapki-admin.php:252
+#: inc/class-lapki-admin.php:380
+#: inc/class-lapki-admin.php:861
+msgid "Тварини"
+msgstr ""
+
+#: inc/class-lapki-admin.php:261
+#: inc/class-lapki-admin.php:262
+#: inc/class-lapki-admin.php:862
+#: inc/class-lapki-admin.php:1237
+#: templates/add-animal.php:51
+#: templates/add-animal.php:202
+msgid "Додати тварину"
+msgstr ""
+
+#: inc/class-lapki-admin.php:271
+#: inc/class-lapki-admin.php:272
+#: inc/class-lapki-admin.php:996
+msgid "Організації"
+msgstr ""
+
+#: inc/class-lapki-admin.php:281
+#: inc/class-lapki-admin.php:282
+#: inc/class-lapki-admin.php:997
+#: inc/class-lapki-admin.php:1645
+msgid "Додати організацію"
+msgstr ""
+
+#: inc/class-lapki-admin.php:291
+#: inc/class-lapki-admin.php:292
+#: inc/class-lapki-admin.php:1046
+msgid "Атрибути"
+msgstr ""
+
+#: inc/class-lapki-admin.php:301
+msgid "Email-шаблони Lapki"
+msgstr ""
+
+#: inc/class-lapki-admin.php:302
+#: inc/class-lapki-admin.php:1193
+msgid "Email-шаблони"
+msgstr ""
+
+#: inc/class-lapki-admin.php:311
+#: inc/class-lapki-admin.php:378
+msgid "Статистика Lapki"
+msgstr ""
+
+#: inc/class-lapki-admin.php:312
+msgid "Статистика"
+msgstr ""
+
+#: inc/class-lapki-admin.php:321
+#: inc/class-lapki-admin.php:641
+msgid "Налаштування Lapki"
+msgstr ""
+
+#: inc/class-lapki-admin.php:322
+msgid "Налаштування"
+msgstr ""
+
+#: inc/class-lapki-admin.php:342
+#: inc/class-lapki-admin.php:348
+msgid "Сьогодні"
+msgstr ""
+
+#: inc/class-lapki-admin.php:343
+#: inc/class-lapki-admin.php:349
+msgid "Цей тиждень"
+msgstr ""
+
+#: inc/class-lapki-admin.php:344
+#: inc/class-lapki-admin.php:350
+msgid "Цей місяць"
+msgstr ""
+
+#: inc/class-lapki-admin.php:384
+msgid "Всього в базі"
+msgstr ""
+
+#. translators: %s: period label (e.g. "Today", "This week")
+#: inc/class-lapki-admin.php:391
+msgid "Додано: %s"
+msgstr ""
+
+#: inc/class-lapki-admin.php:400
+msgid "По видах"
+msgstr ""
+
+#: inc/class-lapki-admin.php:404
+#: inc/class-lapki-admin.php:879
+#: inc/class-lapki-admin.php:1258
+msgid "Вид"
+msgstr ""
+
+#: inc/class-lapki-admin.php:405
+#: inc/class-lapki-admin.php:456
+#: inc/class-lapki-admin.php:530
+msgid "Кількість"
+msgstr ""
+
+#: inc/class-lapki-admin.php:410
+msgid "Немає даних."
+msgstr ""
+
+#: inc/class-lapki-admin.php:422
+msgid "Виклики ШІ (\"Покращити за допомогою ШІ\")"
+msgstr ""
+
+#: inc/class-lapki-admin.php:426
+msgid "Період"
+msgstr ""
+
+#: inc/class-lapki-admin.php:427
+msgid "Всього"
+msgstr ""
+
+#: inc/class-lapki-admin.php:428
+msgid "Успішно"
+msgstr ""
+
+#: inc/class-lapki-admin.php:429
+msgid "Помилка"
+msgstr ""
+
+#: inc/class-lapki-admin.php:430
+#: inc/class-lapki-admin.php:510
+msgid "Токени (запит)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:431
+#: inc/class-lapki-admin.php:514
+msgid "Токени (відповідь)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:432
+#: inc/class-lapki-admin.php:518
+msgid "Токени всього"
+msgstr ""
+
+#: inc/class-lapki-admin.php:449
+msgid "Кількість токенів — те, що реально повернув API провайдера (usageMetadata у відповіді Gemini), не оцінка на клієнті. Для невдалих викликів токени зазвичай 0 (запит не дійшов до генерації відповіді)."
+msgstr ""
+
+#: inc/class-lapki-admin.php:451
+msgid "Помилки ШІ за цей місяць — по типу"
+msgstr ""
+
+#: inc/class-lapki-admin.php:455
+#: inc/class-lapki-admin.php:529
+msgid "Тип помилки"
+msgstr ""
+
+#: inc/class-lapki-admin.php:461
+msgid "Помилок не було."
+msgstr ""
+
+#: inc/class-lapki-admin.php:473
+msgid "Довільний період"
+msgstr ""
+
+#: inc/class-lapki-admin.php:477
+msgid "З"
+msgstr ""
+
+#: inc/class-lapki-admin.php:481
+msgid "По"
+msgstr ""
+
+#: inc/class-lapki-admin.php:484
+msgid "Показати"
+msgstr ""
+
+#: inc/class-lapki-admin.php:489
+msgid "Вкажіть коректні дати \"з\" і \"по\"."
+msgstr ""
+
+#: inc/class-lapki-admin.php:494
+msgid "Тварин додано за період"
+msgstr ""
+
+#: inc/class-lapki-admin.php:498
+msgid "Викликів ШІ за період"
+msgstr ""
+
+#: inc/class-lapki-admin.php:502
+msgid "— успішно"
+msgstr ""
+
+#: inc/class-lapki-admin.php:506
+msgid "— помилка"
+msgstr ""
+
+#: inc/class-lapki-admin.php:525
+msgid "Помилки за період — по типу"
+msgstr ""
+
+#: inc/class-lapki-admin.php:558
+msgid "Тайм-аут з'єднання (API не відповів вчасно)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:559
+msgid "Помилка з'єднання з API"
+msgstr ""
+
+#: inc/class-lapki-admin.php:560
+msgid "Вичерпано безкоштовний ліміт запитів (HTTP 429)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:561
+msgid "Модель тимчасово перевантажена (HTTP 503)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:562
+msgid "Провайдер повернув іншу помилку (напр. невалідний ключ, недоступна модель)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:563
+msgid "Заблоковано фільтром безпеки провайдера"
+msgstr ""
+
+#: inc/class-lapki-admin.php:564
+msgid "Провайдер повернув порожню відповідь"
+msgstr ""
+
+#: inc/class-lapki-admin.php:567
+msgid "(невідома помилка)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:646
+msgid "Дистанція пошуку за замовчуванням (км)"
+msgstr ""
+
+#: inc/class-lapki-admin.php:650
+msgid "Використовується в геопошуку тварин, якщо клієнт не вказав свою відстань."
+msgstr ""
+
+#: inc/class-lapki-admin.php:654
 msgid "Тварин на сторінці за замовчуванням"
 msgstr ""
 
-#: inc/class-lapki-admin.php:136
+#: inc/class-lapki-admin.php:658
 msgid "Дефолтний розмір сторінки в REST API (GET /animals) та на фронтенді. Максимум — 100."
 msgstr ""
 
-#: inc/class-lapki-admin.php:140
+#: inc/class-lapki-admin.php:662
 msgid "Email для нотифікацій"
 msgstr ""
 
-#: inc/class-lapki-admin.php:144
+#: inc/class-lapki-admin.php:666
 msgid "Резервна адреса для сповіщень про нові заявки на усиновлення, якщо в організації не вказано email."
 msgstr ""
 
-#: inc/class-lapki-admin.php:148
+#: inc/class-lapki-admin.php:670
+msgid "Фонове фото головного банера"
+msgstr ""
+
+#: inc/class-lapki-admin.php:680
+#: inc/class-lapki-admin.php:696
+msgid "Обрати зображення"
+msgstr ""
+
+#: inc/class-lapki-admin.php:681
+#: inc/class-lapki-admin.php:697
+msgid "Прибрати"
+msgstr ""
+
+#: inc/class-lapki-admin.php:682
+msgid "Якщо задано — банер на головній сторінці показує саме це фото на всю ширину, без затемнення чи оверлея. Якщо порожньо — використовується стандартний зелений градієнт теми. Рекомендована ширина — від 1920 пікселів."
+msgstr ""
+
+#: inc/class-lapki-admin.php:686
+msgid "Лого сайту"
+msgstr ""
+
+#: inc/class-lapki-admin.php:698
+msgid "Показується в шапці сайту в оригінальному розмірі файлу (лише вписується у висоту шапки, без обрізки/ресайзу WordPress). Якщо порожньо — використовується лого з Налаштування зовнішнього вигляду → Оформлення сайту, або дефолтне лого теми."
+msgstr ""
+
+#: inc/class-lapki-admin.php:710
+msgid "Оберіть фонове фото банера"
+msgstr ""
+
+#: inc/class-lapki-admin.php:711
+#: inc/class-lapki-admin.php:737
+msgid "Використати це зображення"
+msgstr ""
+
+#: inc/class-lapki-admin.php:736
+msgid "Оберіть лого сайту"
+msgstr ""
+
+#: inc/class-lapki-admin.php:760
+msgid "ШІ-інтеграції"
+msgstr ""
+
+#: inc/class-lapki-admin.php:761
+msgid "Використовуються для кнопки \"Покращити за допомогою ШІ\" (напр. біля поля \"Опис\" тварини). Ключ спільний для сайту — платить/лімітує його власник сайту, не окремий користувач."
+msgstr ""
+
+#: inc/class-lapki-admin.php:767
+msgid "Дефолтний ШІ-провайдер"
+msgstr ""
+
+#: inc/class-lapki-admin.php:813
 msgid "Зберегти налаштування"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:307
-#: inc/class-lapki-rest-api.php:364
-#: inc/class-lapki-rest-api.php:390
-#: inc/class-lapki-rest-api.php:875
-#: inc/class-lapki-rest-api.php:1150
+#: inc/class-lapki-admin.php:867
+msgid "Пошук тварин..."
+msgstr ""
+
+#: inc/class-lapki-admin.php:877
+#: templates/add-animal.php:155
+#: templates/add-organization.php:74
+msgid "Фото"
+msgstr ""
+
+#: inc/class-lapki-admin.php:878
+#: inc/class-lapki-admin.php:1246
+#: templates/archive-animals.php:60
+msgid "Кличка"
+msgstr ""
+
+#: inc/class-lapki-admin.php:880
+msgid "Порода"
+msgstr ""
+
+#: inc/class-lapki-admin.php:881
+msgid "Вік/Стать"
+msgstr ""
+
+#: inc/class-lapki-admin.php:882
+#: inc/class-lapki-admin.php:1266
+#: templates/profile.php:553
+#: templates/profile.php:623
+msgid "Статус"
+msgstr ""
+
+#: inc/class-lapki-admin.php:883
+#: inc/class-lapki-admin.php:1250
+#: templates/profile.php:477
+#: templates/profile.php:551
+msgid "Організація"
+msgstr ""
+
+#: inc/class-lapki-admin.php:884
+#: templates/profile.php:552
+msgid "Дата"
+msgstr ""
+
+#: inc/class-lapki-admin.php:891
+msgid "Завантаження..."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1001
+msgid "Пошук за назвою..."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1003
+msgid "Всі типи"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1009
+#: inc/class-lapki-admin.php:1075
+msgid "Фільтрувати"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1016
+#: inc/class-lapki-admin.php:1656
+msgid "Назва"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1017
+#: inc/class-lapki-admin.php:1660
+msgid "Тип"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1019
+msgid "Місто"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1020
+msgid "Тварин"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1021
+#: templates/profile.php:335
+#: templates/single-organization.php:62
+msgid "Верифіковано"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1022
+#: inc/class-lapki-admin.php:1088
+msgid "Дії"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1047
+#: inc/class-lapki-admin.php:1107
+msgid "Додати атрибут"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1052
+msgid "Всі мови"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1057
+msgid "Всі entity"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1064
+msgid "Всі attr_name"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1074
+msgid "Пошук за значенням..."
+msgstr ""
+
+#. translators: %1$s: "all" code tag, %2$s: "type" code tag, %3$s: "dog" code tag, %4$s: "cat" code tag
+#: inc/class-lapki-admin.php:1129
+msgid "Для глобальних атрибутів (age/gender/size) — %1$s. Для типів — %2$s. Для порід — назва типу: %3$s, %4$s."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1162
+msgid "Собака, Лабрадор, Молодий..."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1175
+#: inc/class-lapki-admin.php:1220
+#: inc/class-lapki-admin.php:1439
+#: inc/class-lapki-admin.php:1721
+#: templates/edit-profile.php:75
+msgid "Зберегти"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1176
+#: inc/class-lapki-admin.php:1221
+#: inc/class-lapki-admin.php:1440
+#: inc/class-lapki-admin.php:1722
+#: templates/edit-profile.php:76
+msgid "Скасувати"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1195
+msgid "Шаблони листів, які сайт надсилає автоматично. У тексті можна використовувати мітки у фігурних дужках — вони підставляються реальними значеннями перед відправкою."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1204
+msgid "Редагувати шаблон"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1212
+msgid "Текст листа"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1237
+#: templates/add-animal.php:51
+msgid "Редагувати тварину"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1238
+#: inc/class-lapki-admin.php:1646
+msgid "Повернутися до списку"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1243
+#: inc/class-lapki-admin.php:1653
+msgid "Основна інформація"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1253
+msgid "Виберіть організацію"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1261
+msgid "Виберіть вид"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1269
+msgid "Виберіть статус"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1270
+msgid "До прилаштування"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1271
+msgid "Прилаштовано"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1272
+#: templates/profile.php:101
+msgid "На утриманні"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1273
+msgid "Знайдено"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1279
+msgid "Характеристики"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1282
+msgid "Вік"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1285
+msgid "Виберіть вік"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1291
+msgid "Стать"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1294
+msgid "Виберіть стать"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1300
+msgid "Розмір"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1303
+msgid "Виберіть розмір"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1309
+msgid "Основний колір"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1312
+msgid "Виберіть колір"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1318
+msgid "Тип шерсті"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1321
+msgid "Виберіть тип"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1328
+msgid "Породи"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1331
+msgid "Основна порода"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1334
+#: inc/class-lapki-admin.php:1343
+msgid "Виберіть породу"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1340
+msgid "Додаткова порода"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1349
+msgid "Метис"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1355
+#: templates/single-animal.php:143
+msgid "Додаткова інформація"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1359
+#: inc/class-lapki-admin.php:1708
+#: templates/add-animal.php:107
+msgid "Опис"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1362
+msgid "Опис тварини"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1364
+msgid "Детальний опис характеру, звичок, особливостей..."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1366
+#: templates/add-animal.php:111
+msgid "Покращити за допомогою ШІ"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1367
+#: templates/add-animal.php:114
+msgid "Скасувати зміни"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1375
+msgid "Стерилізована/Кастрована"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1376
+msgid "Щеплення актуальні"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1377
+msgid "Приучена до лотка/туалету"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1378
+#: templates/add-animal.php:149
+#: templates/single-animal.php:128
+msgid "Особливі потреби"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1379
+#: templates/single-animal.php:129
+msgid "З зони бойових дій"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1380
+msgid "Добре ладнає з дітьми"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1381
+msgid "Добре ладнає з собаками"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1382
+msgid "Добре ладнає з котами"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1385
+#: inc/class-lapki-admin.php:1676
+msgid "Контактна інформація"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1388
+msgid "Email для контакту"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1392
+#: inc/class-lapki-admin.php:1683
+#: templates/add-organization.php:61
+#: templates/edit-profile.php:68
+#: templates/profile.php:615
+#: templates/single-animal.php:231
+msgid "Телефон"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1397
+#: inc/class-lapki-admin.php:1692
+msgid "Місцезнаходження"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1400
+msgid "Вулиця, будинок"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1401
+msgid "вул. Хрещатик, 1"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1404
+msgid "Додаткова адреса"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1405
+msgid "кв. 10, під'їзд 2"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1408
+#: inc/class-lapki-admin.php:1695
+msgid "Населений пункт"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1416
+msgid "Широта"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1420
+msgid "Довгота"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1426
+msgid "Знайти на карті за адресою"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1430
+msgid "Карта"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1433
+msgid "Клікніть на карті щоб вибрати точне місцезнаходження. Координати оновляться автоматично."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1447
+msgid "Зображення"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1452
+msgid "Додати нові зображення"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1455
+#: inc/class-lapki-admin.php:1738
+#: templates/add-animal.php:187
+#: templates/add-organization.php:77
+msgid "Перетягніть файли сюди або клікніть для вибору"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1456
+#: inc/class-lapki-admin.php:1739
+msgid "JPG, PNG, GIF, WebP, до 10 МБ"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1645
+msgid "Редагувати організацію"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1663
+#: templates/archive-organizations.php:26
+#: templates/profile.php:82
+#: templates/single-organization.php:30
+msgid "Приватна особа"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1664
+#: templates/add-organization.php:41
+#: templates/archive-organizations.php:27
+#: templates/donate.php:30
+#: templates/profile.php:83
+#: templates/single-organization.php:31
+msgid "Притулок"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1665
+#: templates/add-organization.php:44
+#: templates/archive-organizations.php:28
+#: templates/profile.php:86
+#: templates/single-organization.php:32
+msgid "Волонтерська організація"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1666
+#: templates/archive-organizations.php:29
+#: templates/single-organization.php:33
+msgid "Ветклініка"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1671
+msgid "Верифікована"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1687
+msgid "Сайт"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1703
+msgid "Область"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1711
+#: templates/single-organization.php:146
+msgid "Місія"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1715
+#: templates/single-organization.php:155
+msgid "Політика усиновлення"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1729
+msgid "Фото притулку"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1730
+msgid "Зберігаються окремо від фото тварин, відображаються на публічній сторінці організації. Перше завантажене фото стає обкладинкою — саме воно показується в картці організації, зокрема в результатах пошуку на сторінці «Організації»; позначку «головне» (⭐) можна перенести на інше фото."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1735
+msgid "Додати нові фото"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1743
+msgid "Відео притулку"
+msgstr ""
+
+#: inc/class-lapki-admin.php:1744
+msgid "Посилання на YouTube, Vimeo, TikTok, Instagram, Facebook або Dailymotion — власного відеосховища немає, файли не приймаються, лише зовнішні посилання. Можна вставити одразу декілька — розділювач не важливий (пробіл, кома, з нового рядка)."
+msgstr ""
+
+#: inc/class-lapki-admin.php:1749
+msgid "Додати відео"
+msgstr ""
+
+#: inc/class-lapki-i18n.php:258
+msgid "Мова сайту"
+msgstr ""
+
+#: inc/class-lapki-models.php:1239
+msgid "Файл не завантажений"
+msgstr ""
+
+#: inc/class-lapki-models.php:1247
+msgid "Невірний тип файлу"
+msgstr ""
+
+#: inc/class-lapki-models.php:1263
+msgid "Не вдалося перемістити файл"
+msgstr ""
+
+#: inc/class-lapki-models.php:1270
+msgid "Файл не є валідним зображенням"
+msgstr ""
+
+#: inc/class-lapki-models.php:1298
+msgid "Не вдалося створити запис в БД"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:535
+#: inc/class-lapki-rest-api.php:633
+#: inc/class-lapki-rest-api.php:666
+#: inc/class-lapki-rest-api.php:1523
+#: inc/class-lapki-rest-api.php:1636
+#: inc/class-lapki-rest-api.php:1917
+#: templates/single-animal.php:21
 msgid "Тварину не знайдено"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:331
-#: inc/class-lapki-rest-api.php:518
+#. translators: %s: field name
+#: inc/class-lapki-rest-api.php:593
+#: inc/class-lapki-rest-api.php:912
 msgid "Поле '%s' є обов'язковим"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:348
+#: inc/class-lapki-rest-api.php:617
 msgid "Не вдалося створити тварину"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:375
+#: inc/class-lapki-rest-api.php:651
 msgid "Не вдалося оновити тварину"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:396
+#: inc/class-lapki-rest-api.php:672
 msgid "Не вдалося видалити тварину"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:440
-msgid "Тип тварини не знайдено"
+#: inc/class-lapki-rest-api.php:675
+msgid "Тварину успішно видалено"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:502
-#: inc/class-lapki-rest-api.php:546
-#: inc/class-lapki-rest-api.php:565
-msgid "Організацію не знайдено"
+#: inc/class-lapki-rest-api.php:716
+msgid "Вид тварини не знайдено"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:530
-msgid "Не вдалося створити організацію"
+#: inc/class-lapki-rest-api.php:765
+msgid "Поле 'Місто' є обов'язковим — оберіть населений пункт зі списку підказок"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:551
-msgid "Не вдалося оновити організацію"
+#: inc/class-lapki-rest-api.php:773
+msgid "Оберіть населений пункт зі списку підказок, а не довільний текст"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:570
-msgid "Не вдалося видалити організацію"
+#: inc/class-lapki-rest-api.php:809
+msgid "Немає тексту для покращення."
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:881
-msgid "Файл не надіслано"
+#: inc/class-lapki-rest-api.php:834
+msgid "ШІ-провайдер не налаштований. Зверніться до адміністратора сайту."
 msgstr ""
 
 #: inc/class-lapki-rest-api.php:889
-msgid "Дозволені тільки зображення (JPG, PNG, GIF, WebP)"
+#: inc/class-lapki-rest-api.php:955
+#: inc/class-lapki-rest-api.php:1147
+#: inc/class-lapki-rest-api.php:1166
+#: inc/class-lapki-rest-api.php:1571
+#: inc/class-lapki-rest-api.php:1619
+#: templates/single-organization.php:21
+msgid "Організацію не знайдено"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:894
-msgid "Файл занадто великий. Максимум 10MB"
+#: inc/class-lapki-rest-api.php:928
+msgid "Не вдалося створити організацію"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:925
-msgid "Не вдалося завантажити файл"
+#: inc/class-lapki-rest-api.php:961
+msgid "Це не організація, а профіль приватної особи — приєднатись до нього не можна."
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:956
-msgid "Помилка додавання до бази даних"
+#: inc/class-lapki-rest-api.php:969
+msgid "Ви вже подавали заявку або є учасником цієї організації."
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:973
-#: inc/class-lapki-rest-api.php:1100
-msgid "Медіа не знайдено"
+#: inc/class-lapki-rest-api.php:976
+msgid "Не вдалося надіслати заявку на приєднання"
 msgstr ""
 
 #: inc/class-lapki-rest-api.php:984
-msgid "Не вдалося видалити медіа"
+msgid "Заявку надіслано. Очікуйте підтвердження власником організації."
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:1042
-msgid "Поле '%s' обов'язкове"
+#. translators: %s: organization name
+#: inc/class-lapki-rest-api.php:1012
+msgid "Нова заявка на приєднання до \"%s\""
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:1048
-msgid "Помилка створення атрибуту"
-msgstr ""
-
-#: inc/class-lapki-rest-api.php:1062
-#: inc/class-lapki-rest-api.php:1085
-msgid "Атрибут не знайдено"
-msgstr ""
-
-#: inc/class-lapki-rest-api.php:1107
-msgid "Не вдалося встановити головне фото"
-msgstr ""
-
-#: inc/class-lapki-rest-api.php:1133
-msgid "Параметр 'organization_id' обов'язковий"
-msgstr ""
-
-#: inc/class-lapki-rest-api.php:1170
-msgid "Не вдалося надіслати заявку"
-msgstr ""
-
-#: inc/class-lapki-rest-api.php:1187
+#: inc/class-lapki-rest-api.php:1036
+#: inc/class-lapki-rest-api.php:1057
+#: inc/class-lapki-rest-api.php:1969
+#: inc/class-lapki-rest-api.php:2000
 msgid "Заявку не знайдено"
 msgstr ""
 
-#: inc/class-lapki-rest-api.php:1199
+#: inc/class-lapki-rest-api.php:1041
+msgid "Не вдалося підтвердити заявку"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1078
+msgid "Ви не прив'язані до цієї організації"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1084
+msgid "Власник не може вийти з організації. Спершу передайте право власності іншому учаснику."
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1105
+msgid "Оберіть іншого учасника організації."
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1112
+msgid "Обраний користувач не є учасником цієї організації."
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1152
+msgid "Не вдалося оновити організацію"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1171
+msgid "Не вдалося видалити організацію"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1174
+msgid "Організацію успішно видалено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1529
+#: inc/class-lapki-rest-api.php:1576
+#: inc/class-lapki-rest-api.php:2201
+msgid "Файл не надіслано"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1536
+#: inc/class-lapki-rest-api.php:1582
+#: inc/class-lapki-rest-api.php:2207
+msgid "Файл занадто великий. Максимум 10MB"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1652
+msgid "Не знайдено жодного дійсного посилання на відео (YouTube, Vimeo, TikTok, Instagram, Facebook, Dailymotion)"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1673
+msgid "Не вдалося додати відео"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1687
+#: inc/class-lapki-rest-api.php:1851
+msgid "Медіа не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1698
+msgid "Не вдалося видалити медіа"
+msgstr ""
+
+#. translators: %s: field name
+#: inc/class-lapki-rest-api.php:1758
+msgid "Поле '%s' обов'язкове"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1766
+msgid "Помилка створення атрибуту"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1780
+#: inc/class-lapki-rest-api.php:1803
+msgid "Атрибут не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1829
+msgid "Шаблон не знайдено"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1836
+msgid "Заповніть тему і текст листа"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1858
+msgid "Не вдалося встановити головне фото"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1891
+msgid "Параметр 'organization_id' обов'язковий"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1924
+#: templates/single-animal.php:178
+msgid "Ця тварина ще не готова до прилаштування"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1935
+msgid "Заповніть усі поля: ім'я, коректний email, телефон і повідомлення"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1952
+msgid "Не вдалося надіслати заявку"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:1981
 msgid "Некоректний статус"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:2062
+msgid "Заповніть прізвище, ім'я, коректний email, пароль (мінімум 6 символів) і телефон у форматі +38 (XXX) XXX-XX-XX"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:2066
+msgid "Користувач з таким email вже зареєстрований"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:2107
+msgid "Вкажіть коректний email і пароль"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:2112
+#: inc/class-lapki-rest-api.php:2122
+msgid "Неправильний email або пароль"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:2152
+msgid "Заповніть прізвище, ім'я і коректний email"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:2156
+msgid "Телефон має бути у форматі +38 (XXX) XXX-XX-XX"
+msgstr ""
+
+#: inc/class-lapki-rest-api.php:2161
+msgid "Цей email вже використовується іншим акаунтом"
+msgstr ""
+
+#: lapki.php:393
+msgid "кішка"
+msgstr ""
+
+#: lapki.php:393
+msgid "кіт"
+msgstr ""
+
+#: lapki.php:396
+msgid "собака"
+msgstr ""
+
+#: lapki.php:397
+msgid "птах"
+msgstr ""
+
+#: lapki.php:398
+msgid "кролик"
+msgstr ""
+
+#: lapki.php:399
+msgid "інше"
+msgstr ""
+
+#: templates/about.php:25
+msgid "Сторінку не знайдено"
+msgstr ""
+
+#: templates/about.php:26
+msgid "← На головну"
+msgstr ""
+
+#: templates/about.php:40
+msgid "Це чернетка — сторінку бачите лише ви як адміністратор. Опублікуйте її в wp-admin → Сторінки, коли текст буде готовий."
+msgstr ""
+
+#: templates/add-animal.php:36
+msgid "У вас немає доступу до редагування цієї тварини."
+msgstr ""
+
+#: templates/add-animal.php:55
+msgid "Не вдалося підготувати профіль для додавання тварини. Спробуйте ще раз або зверніться до підтримки."
+msgstr ""
+
+#: templates/add-animal.php:64
+msgid "Кличка *"
+msgstr ""
+
+#: templates/add-animal.php:66
+msgid "Вкажіть кличку тварини."
+msgstr ""
+
+#: templates/add-animal.php:69
+msgid "Вид *"
+msgstr ""
+
+#: templates/add-animal.php:71
+msgid "Оберіть вид…"
+msgstr ""
+
+#: templates/add-animal.php:73
+msgid "Оберіть вид тварини."
+msgstr ""
+
+#: templates/add-animal.php:77
+msgid "Вік *"
+msgstr ""
+
+#: templates/add-animal.php:79
+#: templates/add-animal.php:86
+#: templates/add-animal.php:93
+msgid "Оберіть…"
+msgstr ""
+
+#: templates/add-animal.php:81
+msgid "Оберіть вік."
+msgstr ""
+
+#: templates/add-animal.php:84
+msgid "Стать *"
+msgstr ""
+
+#: templates/add-animal.php:88
+msgid "Оберіть стать."
+msgstr ""
+
+#: templates/add-animal.php:91
+msgid "Розмір *"
+msgstr ""
+
+#: templates/add-animal.php:95
+msgid "Оберіть розмір."
+msgstr ""
+
+#: templates/add-animal.php:99
+#: templates/add-organization.php:54
+msgid "Населений пункт *"
+msgstr ""
+
+#: templates/add-animal.php:103
+#: templates/add-organization.php:58
+msgid "Почніть вводити назву й оберіть населений пункт зі списку підказок."
+msgstr ""
+
+#: templates/add-animal.php:121
+msgid "Додатково"
+msgstr ""
+
+#: templates/add-animal.php:125
+msgid "Стерилізована/кастрований"
+msgstr ""
+
+#: templates/add-animal.php:129
+#: templates/single-animal.php:112
+msgid "Вакцинована"
+msgstr ""
+
+#: templates/add-animal.php:133
+#: templates/single-animal.php:124
+msgid "Привчена до туалету"
+msgstr ""
+
+#: templates/add-animal.php:137
+#: templates/single-animal.php:125
+msgid "Добре з дітьми"
+msgstr ""
+
+#: templates/add-animal.php:141
+#: templates/single-animal.php:126
+msgid "Добре з собаками"
+msgstr ""
+
+#: templates/add-animal.php:145
+#: templates/single-animal.php:127
+msgid "Добре з котами"
+msgstr ""
+
+#: templates/add-animal.php:166
+#: templates/edit-profile.php:44
+msgid "Видалити фото"
+msgstr ""
+
+#: templates/add-animal.php:168
+msgid "Зробити головним фото"
+msgstr ""
+
+#. translators: %s: іконка зірки
+#: templates/add-animal.php:179
+msgid "Жовта рамка — головне фото. Клацніть %s, щоб зробити інше фото головним, або × — щоб видалити."
+msgstr ""
+
+#: templates/add-animal.php:188
+#: templates/add-organization.php:78
+msgid "до 10 МБ"
+msgstr ""
+
+#: templates/add-animal.php:191
+msgid "Нові фото додаються до вже наявних."
+msgstr ""
+
+#: templates/add-animal.php:191
+msgid "Перше фото стане головним."
+msgstr ""
+
+#: templates/add-animal.php:191
+msgid "Відео-файли не приймаються — лише посилання нижче."
+msgstr ""
+
+#: templates/add-animal.php:195
+#: templates/add-organization.php:85
+#: templates/single-organization.php:105
+#: templates/single-organization.php:109
+msgid "Відео"
+msgstr ""
+
+#: templates/add-animal.php:197
+msgid "Посилання на YouTube, Vimeo, TikTok, Instagram, Facebook чи Dailymotion. Можна вставити одразу декілька — розділювач не важливий (пробіл, кома, з нового рядка)"
+msgstr ""
+
+#: templates/add-animal.php:197
+msgid ", додадуться до вже наявних відео"
+msgstr ""
+
+#: templates/add-animal.php:202
+msgid "Зберегти зміни"
+msgstr ""
+
+#: templates/add-organization.php:30
+#: templates/profile.php:194
+#: templates/profile.php:271
+#: templates/profile.php:310
+msgid "Мої організації"
+msgstr ""
+
+#: templates/add-organization.php:32
+#: templates/add-organization.php:92
+#: templates/profile.php:405
+msgid "Зареєструвати організацію"
+msgstr ""
+
+#: templates/add-organization.php:38
+msgid "Тип організації *"
+msgstr ""
+
+#: templates/add-organization.php:40
+msgid "Оберіть тип"
+msgstr ""
+
+#: templates/add-organization.php:42
+#: templates/profile.php:84
+msgid "Ветеринарна клініка"
+msgstr ""
+
+#: templates/add-organization.php:43
+#: templates/profile.php:85
+msgid "Окремий ветеринар"
+msgstr ""
+
+#: templates/add-organization.php:46
+msgid "Оберіть тип організації."
+msgstr ""
+
+#: templates/add-organization.php:49
+msgid "Назва *"
+msgstr ""
+
+#: templates/add-organization.php:51
+msgid "Вкажіть назву організації."
+msgstr ""
+
+#: templates/add-organization.php:69
+msgid "Опис організації"
+msgstr ""
+
+#: templates/add-organization.php:70
+msgid "Розкажіть про організацію: чим займаєтесь, кому й як допомагаєте…"
+msgstr ""
+
+#: templates/add-organization.php:81
+msgid "Перше фото стане обкладинкою організації — саме воно показується в картці на сторінці «Організації», зокрема в результатах пошуку. Відео-файли не приймаються — лише посилання нижче."
+msgstr ""
+
+#: templates/add-organization.php:87
+msgid "Посилання на YouTube, Vimeo, TikTok, Instagram, Facebook чи Dailymotion. Можна вставити одразу декілька — розділювач не важливий (пробіл, кома, з нового рядка)."
+msgstr ""
+
+#: templates/archive-animals.php:26
+msgid "Тварини, що шукають дім"
+msgstr ""
+
+#: templates/archive-animals.php:31
+#: templates/single-animal.php:47
+msgid "Всі тварини"
+msgstr ""
+
+#: templates/archive-animals.php:32
+msgid "Собаки"
+msgstr ""
+
+#: templates/archive-animals.php:33
+msgid "Коти"
+msgstr ""
+
+#: templates/archive-animals.php:34
+msgid "Птахи"
+msgstr ""
+
+#: templates/archive-animals.php:35
+msgid "Кролики"
+msgstr ""
+
+#: templates/archive-animals.php:40
+msgid "Будь-який вік"
+msgstr ""
+
+#: templates/archive-animals.php:41
+#: templates/single-animal.php:30
+msgid "Малюк"
+msgstr ""
+
+#: templates/archive-animals.php:42
+#: templates/single-animal.php:30
+msgid "Молодий"
+msgstr ""
+
+#: templates/archive-animals.php:43
+#: templates/single-animal.php:30
+msgid "Дорослий"
+msgstr ""
+
+#: templates/archive-animals.php:44
+#: templates/single-animal.php:30
+msgid "Похилого віку"
+msgstr ""
+
+#: templates/archive-animals.php:49
+msgid "Всі притулки"
+msgstr ""
+
+#: templates/archive-animals.php:63
+msgid "Шукати"
+msgstr ""
+
+#: templates/archive-animals.php:70
+msgid "Також показувати тварин в радіусі"
+msgstr ""
+
+#: templates/archive-animals.php:73
+msgid "км від мого населеного пункта"
+msgstr ""
+
+#: templates/archive-organizations.php:39
+msgid "Організації та притулки"
+msgstr ""
+
+#: templates/archive-organizations.php:45
+msgid "Всі міста"
+msgstr ""
+
+#. translators: %s: назва міста
+#: templates/archive-organizations.php:64
+msgid "У місті %s організацій поки немає."
+msgstr ""
+
+#: templates/archive-organizations.php:65
+msgid "Організацій поки немає."
+msgstr ""
+
+#. translators: %d: кількість тварин
+#: templates/archive-organizations.php:94
+msgid "%d тварина на прилаштування"
+msgid_plural "%d тварин на прилаштування"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/blog.php:52
+msgid "Блог"
+msgstr ""
+
+#: templates/blog.php:56
+msgid "Публікацій поки немає."
+msgstr ""
+
+#: templates/blog.php:91
+msgid "Сторінки блогу"
+msgstr ""
+
+#: templates/donate.php:21
+msgid "Підтримати"
+msgstr ""
+
+#: templates/donate.php:23
+msgid "Тут ви можете пожертвувати гроші притулку, окремому волонтеру, або конкретній тварині, яка шукає дім."
+msgstr ""
+
+#: templates/donate.php:31
+msgid "Оберіть притулок зі списку — ви потрапите на його сторінку з контактами для донату."
+msgstr ""
+
+#: templates/donate.php:33
+msgid "Почніть вводити назву притулку..."
+msgstr ""
+
+#: templates/donate.php:35
+#: templates/donate.php:48
+#: templates/single-animal.php:189
+msgid "Допомогти грошима"
+msgstr ""
+
+#: templates/donate.php:43
+msgid "Волонтер"
+msgstr ""
+
+#: templates/donate.php:44
+msgid "Оберіть волонтерську організацію зі списку — ви потрапите на її сторінку з контактами для донату."
+msgstr ""
+
+#: templates/donate.php:46
+msgid "Почніть вводити назву..."
+msgstr ""
+
+#: templates/donate.php:56
+msgid "Конкретна тварина"
+msgstr ""
+
+#: templates/donate.php:58
+msgid "Щоб допомогти конкретній тварині, знайдіть її за допомогою пошуку тварин і натисніть кнопку «Допомогти грошима» на сторінці цієї тварини."
+msgstr ""
+
+#: templates/donate.php:61
+msgid "Знайти тварину →"
+msgstr ""
+
+#: templates/edit-profile.php:30
+msgid "Особистий кабінет"
+msgstr ""
+
+#: templates/edit-profile.php:32
+msgid "Редагування профілю"
+msgstr ""
+
+#: templates/edit-profile.php:37
+msgid "Змінити фото"
+msgstr ""
+
+#: templates/edit-profile.php:46
+msgid "Натисніть на фото, щоб завантажити нове (JPG, PNG, GIF, WebP, до 10 МБ)"
+msgstr ""
+
+#: templates/edit-profile.php:51
+#: templates/shortcode-signup.php:58
+msgid "Прізвище *"
+msgstr ""
+
+#: templates/edit-profile.php:53
+#: templates/shortcode-signup.php:60
+msgid "Будь ласка, вкажіть прізвище."
+msgstr ""
+
+#: templates/edit-profile.php:56
+#: templates/shortcode-signup.php:63
+msgid "Ім'я *"
+msgstr ""
+
+#: templates/edit-profile.php:58
+#: templates/shortcode-signup.php:65
+msgid "Будь ласка, вкажіть ім'я."
+msgstr ""
+
+#: templates/edit-profile.php:62
+#: templates/shortcode-signup.php:69
+#: templates/shortcode-signup.php:96
+msgid "Email *"
+msgstr ""
+
+#: templates/edit-profile.php:64
+#: templates/shortcode-signup.php:71
+#: templates/shortcode-signup.php:98
+#: templates/single-animal.php:228
+msgid "Вкажіть коректний email."
+msgstr ""
+
+#: templates/edit-profile.php:70
+msgid "Введіть номер телефону повністю: +38 (XXX) XXX-XX-XX, або залиште поле порожнім."
+msgstr ""
+
+#. translators: 1: посилання "увійдіть", 2: посилання "зареєструйтесь"
+#: templates/profile.php:27
+msgid "Щоб переглянути особистий кабінет, спершу %1$s або %2$s."
+msgstr ""
+
+#: templates/profile.php:28
+msgid "увійдіть"
+msgstr ""
+
+#: templates/profile.php:29
+msgid "зареєструйтесь"
+msgstr ""
+
+#: templates/profile.php:90
+msgid "Власник"
+msgstr ""
+
+#: templates/profile.php:91
+msgid "Учасник"
+msgstr ""
+
+#: templates/profile.php:99
+msgid "Шукає дім"
+msgstr ""
+
+#: templates/profile.php:100
+msgid "Прилаштована"
+msgstr ""
+
+#: templates/profile.php:102
+msgid "Знайдена"
+msgstr ""
+
+#: templates/profile.php:115
+msgid "Нова"
+msgstr ""
+
+#: templates/profile.php:116
+msgid "Зв'язались"
+msgstr ""
+
+#: templates/profile.php:117
+msgid "Схвалено"
+msgstr ""
+
+#: templates/profile.php:118
+msgid "Відхилено"
+msgstr ""
+
+#: templates/profile.php:190
+msgid "Головна"
+msgstr ""
+
+#: templates/profile.php:201
+#: templates/profile.php:244
+#: templates/profile.php:509
+msgid "Мої тварини"
+msgstr ""
+
+#: templates/profile.php:205
+#: templates/profile.php:541
+msgid "Заявки на прилаштування"
+msgstr ""
+
+#: templates/profile.php:212
+msgid "Інтеграція"
+msgstr ""
+
+#: templates/profile.php:216
+msgid "Вихід"
+msgstr ""
+
+#: templates/profile.php:227
+msgid "Інформація про користувача"
+msgstr ""
+
+#: templates/profile.php:232
+msgid "Ім'я:"
+msgstr ""
+
+#: templates/profile.php:236
+msgid "Телефон:"
+msgstr ""
+
+#. translators: %d: кількість тварин
+#: templates/profile.php:249
+msgid "%d тварина додана мною"
+msgid_plural "%d тварин додано мною"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: кількість тварин, що чекають прилаштування
+#: templates/profile.php:257
+msgid "%d чекає прилаштування"
+msgid_plural "%d чекають прилаштування"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/profile.php:264
+#: templates/profile.php:302
+msgid "Перейти →"
+msgstr ""
+
+#. translators: %d: кількість організацій
+#: templates/profile.php:276
+msgid "%d організація"
+msgid_plural "%d організацій"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: кількість нових заявок
+#: templates/profile.php:285
+msgid "%d нова заявка на приєднання"
+msgid_plural "%d нових заявок на приєднання"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: кількість заявок
+#: templates/profile.php:295
+msgid "%d моя заявка очікує підтвердження"
+msgid_plural "%d моїх заявок очікує підтвердження"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/profile.php:343
+msgid "Переглянути публічну сторінку →"
+msgstr ""
+
+#: templates/profile.php:346
+msgid "Залишити організацію"
+msgstr ""
+
+#: templates/profile.php:353
+msgid "Передати право власності"
+msgstr ""
+
+#: templates/profile.php:360
+msgid "Передати"
+msgstr ""
+
+#: templates/profile.php:375
+msgid "Заявки на приєднання"
+msgstr ""
+
+#: templates/profile.php:388
+msgid "Підтвердити"
+msgstr ""
+
+#: templates/profile.php:389
+msgid "Відхилити"
+msgstr ""
+
+#: templates/profile.php:402
+#: templates/profile.php:414
+msgid "Приєднатися до організації"
+msgstr ""
+
+#: templates/profile.php:415
+#: templates/profile.php:603
+#: templates/single-animal.php:215
+#: templates/single-animal.php:260
+msgid "Закрити"
+msgstr ""
+
+#: templates/profile.php:418
+msgid "Оберіть притулок чи ГО зі списку — власнику надійде заявка на підтвердження."
+msgstr ""
+
+#: templates/profile.php:419
+msgid "Пошук за назвою або містом..."
+msgstr ""
+
+#: templates/profile.php:423
+msgid "Немає організацій, до яких можна подати заявку."
+msgstr ""
+
+#: templates/profile.php:433
+msgid "Подати заявку"
+msgstr ""
+
+#: templates/profile.php:444
+msgid "Мої заявки"
+msgstr ""
+
+#: templates/profile.php:450
+msgid "Очікує підтвердження власником"
+msgstr ""
+
+#: templates/profile.php:452
+msgid "Скасувати заявку"
+msgstr ""
+
+#: templates/profile.php:461
+msgid "Інтеграція — вбудувати пошук тварин на свій сайт"
+msgstr ""
+
+#: templates/profile.php:464
+msgid "Спершу зареєструйте або приєднайтесь до організації — код вставки формується для конкретного притулку/ГО."
+msgstr ""
+
+#: templates/profile.php:465
+msgid "Перейти до організацій"
+msgstr ""
+
+#: templates/profile.php:471
+msgid "Форма пошуку та результати — тварини вашої організації — на будь-якому сайті, одним рядком коду. Колір і набір полів поки що фіксовані (у стилі lapki.help) — конфігуратор кольорів і полів з'явиться пізніше."
+msgstr ""
+
+#: templates/profile.php:486
+msgid "Код для вставки"
+msgstr ""
+
+#: templates/profile.php:491
+msgid "Скопіювати"
+msgstr ""
+
+#: templates/profile.php:493
+msgid "Скопійовано!"
+msgstr ""
+
+#: templates/profile.php:494
+msgid "Вставте цей рядок у HTML сторінки, де має з'явитись форма пошуку й тварини вашої організації."
+msgstr ""
+
+#: templates/profile.php:498
+msgid "Живе прев'ю"
+msgstr ""
+
+#: templates/profile.php:499
+msgid "Так це виглядатиме на сторонньому сайті (без шапки, футера й меню lapki.help) — контент вбудовується прямо в сторінку, висота підлаштовується під нього автоматично:"
+msgstr ""
+
+#: templates/profile.php:512
+msgid "У вас поки немає організації. Приєднайтесь до існуючої або зареєструйте свою на вкладці «Мої організації»."
+msgstr ""
+
+#: templates/profile.php:514
+msgid "Тварин поки немає."
+msgstr ""
+
+#: templates/profile.php:544
+msgid "Ви ще не подавали заявок на прилаштування. Заявку можна надіслати зі сторінки будь-якої тварини кнопкою «Хочу прилаштувати»."
+msgstr ""
+
+#: templates/profile.php:550
+msgid "Тварина"
+msgstr ""
+
+#: templates/profile.php:565
+#: templates/profile.php:577
+msgid "Тварину видалено"
+msgstr ""
+
+#: templates/profile.php:586
+msgid "Видалити заявку"
+msgstr ""
+
+#: templates/profile.php:602
+msgid "Заявка на усиновлення — "
+msgstr ""
+
+#: templates/profile.php:607
+#: templates/single-animal.php:221
+msgid "Ваше ім'я"
+msgstr ""
+
+#: templates/profile.php:611
+#: templates/single-animal.php:226
+msgid "Email"
+msgstr ""
+
+#: templates/profile.php:619
+#: templates/single-animal.php:236
+msgid "Повідомлення"
+msgstr ""
+
+#: templates/shortcode-signup.php:20
+msgid "Щоб з вами могли зв'язатися щодо прилаштування тварини, будь ласка, зареєструйтесь або увійдіть в свій акаунт, якщо ви вже зареєстровані."
+msgstr ""
+
+#: templates/shortcode-signup.php:21
+msgid "Щоб зареєструвати організацію, будь ласка, зареєструйтесь або увійдіть в свій акаунт, якщо ви вже зареєстровані."
+msgstr ""
+
+#: templates/shortcode-signup.php:22
+msgid "Щоб редагувати профіль, будь ласка, зареєструйтесь або увійдіть в свій акаунт, якщо ви вже зареєстровані."
+msgstr ""
+
+#. translators: %s: ім'я поточного користувача
+#: templates/shortcode-signup.php:38
+msgid "Ви авторизовані як %s. Реєстрація нового акаунта увійде в систему під новим користувачем."
+msgstr ""
+
+#: templates/shortcode-signup.php:47
+msgid "Реєстрація"
+msgstr ""
+
+#: templates/shortcode-signup.php:50
+msgid "Логін"
+msgstr ""
+
+#: templates/shortcode-signup.php:74
+#: templates/shortcode-signup.php:101
+msgid "Пароль *"
+msgstr ""
+
+#: templates/shortcode-signup.php:76
+msgid "Пароль має містити щонайменше 6 символів."
+msgstr ""
+
+#: templates/shortcode-signup.php:80
+msgid "Телефон *"
+msgstr ""
+
+#: templates/shortcode-signup.php:82
+msgid "Введіть номер телефону повністю: +38 (XXX) XXX-XX-XX."
+msgstr ""
+
+#: templates/shortcode-signup.php:87
+msgid "Зареєструватися"
+msgstr ""
+
+#: templates/shortcode-signup.php:88
+msgid "Після реєстрації в кабінеті можна приєднатись до вже існуючого притулку/ГО або зареєструвати свій."
+msgstr ""
+
+#: templates/shortcode-signup.php:103
+msgid "Вкажіть пароль."
+msgstr ""
+
+#: templates/shortcode-signup.php:108
+msgid "Увійти"
+msgstr ""
+
+#: templates/single-animal.php:22
+msgid "← Всі тварини"
+msgstr ""
+
+#: templates/single-animal.php:31
+msgid "Самець"
+msgstr ""
+
+#: templates/single-animal.php:31
+msgid "Самка"
+msgstr ""
+
+#: templates/single-animal.php:31
+msgid "Невідомо"
+msgstr ""
+
+#: templates/single-animal.php:32
+msgid "Малий"
+msgstr ""
+
+#: templates/single-animal.php:32
+msgid "Середній"
+msgstr ""
+
+#: templates/single-animal.php:32
+msgid "Великий"
+msgstr ""
+
+#: templates/single-animal.php:32
+msgid "Дуже великий"
+msgstr ""
+
+#: templates/single-animal.php:109
+msgid "Стерилізована"
+msgstr ""
+
+#: templates/single-animal.php:163
+msgid "Притулок / організація"
+msgstr ""
+
+#: templates/single-animal.php:179
+#: templates/single-animal.php:183
+msgid "Хочу прилаштувати"
+msgstr ""
+
+#: templates/single-animal.php:196
+msgid "Поділитися"
+msgstr ""
+
+#. translators: %s: кличка тварини
+#: templates/single-animal.php:212
+msgid "Заявка на усиновлення — %s"
+msgstr ""
+
+#: templates/single-animal.php:223
+msgid "Будь ласка, вкажіть ваше ім'я."
+msgstr ""
+
+#: templates/single-animal.php:233
+msgid "Будь ласка, вкажіть номер телефону."
+msgstr ""
+
+#: templates/single-animal.php:237
+msgid "Розкажіть трохи про себе та умови для тварини"
+msgstr ""
+
+#: templates/single-animal.php:238
+msgid "Будь ласка, розкажіть трохи про себе та умови для тварини."
+msgstr ""
+
+#: templates/single-animal.php:241
+msgid "Надіслати заявку"
+msgstr ""
+
+#. translators: %s: кличка тварини
+#: templates/single-animal.php:257
+msgid "Допомогти грошима — %s"
+msgstr ""
+
+#. translators: %s: кличка тварини
+#: templates/single-animal.php:266
+msgid "Щоб допомогти саме %s, зв'яжіться з організацією, яка про неї піклується, і уточніть реквізити для донату:"
+msgstr ""
+
+#: templates/single-animal.php:283
+#: templates/single-organization.php:127
+msgid "Сайт організації"
+msgstr ""
+
+#: templates/single-animal.php:286
+msgid "Контакти поки не вказані — перегляньте сторінку організації."
+msgstr ""
+
+#: templates/single-blog.php:21
+msgid "Публікацію не знайдено"
+msgstr ""
+
+#: templates/single-blog.php:22
+msgid "← Всі публікації"
+msgstr ""
+
+#: templates/single-blog.php:35
+msgid "Всі публікації"
+msgstr ""
+
+#: templates/single-blog.php:37
+msgid "Наступна публікація"
+msgstr ""
+
+#: templates/single-blog.php:43
+msgid "Це чернетка — публікацію бачите лише ви як автор/адміністратор. Опублікуйте її в wp-admin → Записи, коли текст буде готовий."
+msgstr ""
+
+#: templates/single-organization.php:22
+msgid "← Всі організації"
+msgstr ""
+
+#: templates/single-organization.php:57
+msgid "Всі організації"
+msgstr ""
+
+#. translators: %d: кількість тварин
+#: templates/single-organization.php:74
+msgid "Тварини цієї організації (%d)"
+msgstr ""
+
+#: templates/single-organization.php:119
+msgid "Контакти"
+msgstr ""
+
+#: templates/single-organization.php:165
+msgid "Наразі немає тварин на прилаштування."
+msgstr ""
+
+#: header.php:69
+msgid "Допомога"
 msgstr ""

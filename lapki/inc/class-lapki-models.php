@@ -48,14 +48,32 @@ class Lapki_Animal extends Lapki_Model {
                 WHERE a.id = %d";
         
         $animal = $wpdb->get_row($wpdb->prepare($sql, $id), ARRAY_A);
-        
+
         if ($animal) {
             // Додаємо медіафайли
             $animal['media'] = Lapki_Media::get_by_entity('animal', $id);
             // Додаємо теги
             $animal['tags'] = Lapki_Tag::get_by_entity('animal', $id);
+            $animal = self::decode_additional_attributes($animal);
         }
-        
+
+        return $animal;
+    }
+
+    /**
+     * "Додаткова інформація" — значення attr_name з довідника атрибутів,
+     * яких немає серед стандартних полів тварини (breed/age/gender/size/coat/
+     * color/status/species). Зберігається одним JSON-стовпцем `additional_attributes`,
+     * бо ці атрибути динамічні (задаються через редактор атрибутів в адмінці) і не
+     * мають власних колонок у таблиці.
+     */
+    private static function decode_additional_attributes($animal) {
+        if (!empty($animal['additional_attributes']) && is_string($animal['additional_attributes'])) {
+            $decoded = json_decode($animal['additional_attributes'], true);
+            $animal['additional_attributes'] = is_array($decoded) ? $decoded : [];
+        } else {
+            $animal['additional_attributes'] = [];
+        }
         return $animal;
     }
     
@@ -166,25 +184,35 @@ class Lapki_Animal extends Lapki_Model {
             $sql_params[] = '%' . $wpdb->esc_like($params['search']) . '%';
         }
 
-        // Локація
+        // Локація (текст) та/або радіус від гео-координат — при наявності
+        // обох об'єднуємо через OR: гео-радіус ДОПОВНЮЄ пошук за назвою
+        // міста ("також показувати тварин в радіусі"), а не звужує його ще
+        // сильніше — інакше типовий кейс "місто Х" + увімкнений гео-чекбокс,
+        // де реальне розташування користувача не збігається з цим містом,
+        // завжди повертав би 0 результатів.
+        $location_or_parts = [];
+
         if (!empty($params['location'])) {
-            $where_clauses[] = "(a.address_city LIKE %s OR a.address_state LIKE %s)";
+            $location_or_parts[] = "(a.address_city LIKE %s OR a.address_state LIKE %s)";
             $location_param = '%' . $params['location'] . '%';
             $sql_params[] = $location_param;
             $sql_params[] = $location_param;
         }
-        
-        // Відстань (якщо є координати)
+
         if ($params['latitude'] && $params['longitude'] && $params['distance']) {
-            $where_clauses[] = "(6371 * acos(cos(radians(%f)) * cos(radians(a.latitude)) * 
-                              cos(radians(a.longitude) - radians(%f)) + sin(radians(%f)) * 
+            $location_or_parts[] = "(6371 * acos(cos(radians(%f)) * cos(radians(a.latitude)) *
+                              cos(radians(a.longitude) - radians(%f)) + sin(radians(%f)) *
                               sin(radians(a.latitude)))) <= %d";
             $sql_params[] = $params['latitude'];
             $sql_params[] = $params['longitude'];
             $sql_params[] = $params['latitude'];
             $sql_params[] = $params['distance'];
         }
-        
+
+        if (!empty($location_or_parts)) {
+            $where_clauses[] = '(' . implode(' OR ', $location_or_parts) . ')';
+        }
+
         // Додаємо WHERE
         if (!empty($where_clauses)) {
             $sql .= " WHERE " . implode(' AND ', $where_clauses);
@@ -212,8 +240,10 @@ class Lapki_Animal extends Lapki_Model {
         // Додаємо медіа для кожної тварини
         foreach ($results as &$animal) {
             $animal['primary_photo'] = Lapki_Media::get_primary_photo('animal', $animal['id']);
+            $animal = self::decode_additional_attributes($animal);
         }
-        
+        unset($animal);
+
         return $results;
     }
     
@@ -256,23 +286,34 @@ class Lapki_Animal extends Lapki_Model {
             $sql_params[] = '%' . $wpdb->esc_like($params['search']) . '%';
         }
 
+        foreach (['good_with_children', 'good_with_dogs', 'good_with_cats', 'spayed_neutered', 'special_needs'] as $f) {
+            if ($params[$f] !== null) { $where_clauses[] = "a.{$f} = %d"; $sql_params[] = (int)$params[$f]; }
+        }
+
+        // Локація (текст) та/або радіус — те саме об'єднання через OR, що й
+        // у search() (гео-радіус доповнює пошук за містом, а не звужує).
+        // Обидві половини мають лишатись поруч (без коду між ними, що
+        // дописує $sql_params) — інакше порядок параметрів розійдеться з
+        // порядком плейсхолдерів у зібраному запиті.
+        $location_or_parts = [];
+
         if (!empty($params['location'])) {
-            $where_clauses[] = "(a.address_city LIKE %s OR a.address_state LIKE %s)";
+            $location_or_parts[] = "(a.address_city LIKE %s OR a.address_state LIKE %s)";
             $loc = '%' . $params['location'] . '%';
             $sql_params[] = $loc;
             $sql_params[] = $loc;
         }
 
-        foreach (['good_with_children', 'good_with_dogs', 'good_with_cats', 'spayed_neutered', 'special_needs'] as $f) {
-            if ($params[$f] !== null) { $where_clauses[] = "a.{$f} = %d"; $sql_params[] = (int)$params[$f]; }
-        }
-
         if ($params['latitude'] && $params['longitude'] && $params['distance']) {
-            $where_clauses[] = "(6371 * acos(cos(radians(%f)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(%f)) + sin(radians(%f)) * sin(radians(a.latitude)))) <= %d";
+            $location_or_parts[] = "(6371 * acos(cos(radians(%f)) * cos(radians(a.latitude)) * cos(radians(a.longitude) - radians(%f)) + sin(radians(%f)) * sin(radians(a.latitude)))) <= %d";
             $sql_params[] = $params['latitude'];
             $sql_params[] = $params['longitude'];
             $sql_params[] = $params['latitude'];
             $sql_params[] = $params['distance'];
+        }
+
+        if (!empty($location_or_parts)) {
+            $where_clauses[] = '(' . implode(' OR ', $location_or_parts) . ')';
         }
 
         $sql = "SELECT COUNT(*) FROM " . self::get_table_name() . " a";
@@ -285,6 +326,55 @@ class Lapki_Animal extends Lapki_Model {
         }
 
         return (int) $wpdb->get_var($sql);
+    }
+
+    /**
+     * Якщо задано address_city_katottg — підтягнути з довідника wp_lapki_geo
+     * координати (якщо їх немає в даних), область і готовий підпис
+     * місцезнаходження (address_city_display — "Запоріжжя" для обласного
+     * центру, "Привільне, Запорізька область, Широківська громада" для
+     * звичайного села, див. Lapki_Main::format_city_location_from_geo()), і
+     * записати прямо в рядок тварини — а не JOIN/повторне обчислення на
+     * кожен показ картки чи кожен пошуковий запит (радіус-пошук і так уже
+     * читає latitude/longitude напряму з wp_lapki_animals, без JOIN).
+     * Використовується лише для ВІДОБРАЖЕННЯ — пошук і надалі йде за
+     * address_city_katottg (точний код), не за цим кешованим текстом.
+     *
+     * Ручні координати (наприклад, точна мітка на карті в адмінці) мають
+     * пріоритет і не перезаписуються. Довідник покриває 99.997% населених
+     * пунктів координатами (див. .doc/geo.md) — якщо координат для цього
+     * КАТОТТГ немає (1 виняток на всю Україну), поле просто лишається
+     * порожнім.
+     *
+     * address_state і address_city_display, на відміну від координат,
+     * синхронізуються завжди, коли є katottg — сам населений пункт
+     * обирається зі списку .lapki-city-field (katottg — актуальний
+     * офіційний код, унікальний ключ довідника; КОАТУУ скасовано 2020 року
+     * й ніде в застосунку більше не використовується), тож кешовані поля не
+     * повинні лишатись застарілими після зміни міста.
+     */
+    private static function maybe_fill_geo_from_city($data) {
+        if (empty($data['address_city_katottg'])) {
+            return $data;
+        }
+
+        $geo = Lapki_Geo::get_by_katottg_code($data['address_city_katottg']);
+        if (!$geo) {
+            return $data;
+        }
+
+        if (empty($data['latitude']) && empty($data['longitude']) && $geo['latitude'] !== null && $geo['longitude'] !== null) {
+            $data['latitude'] = $geo['latitude'];
+            $data['longitude'] = $geo['longitude'];
+        }
+
+        if (!empty($geo['oblast'])) {
+            $data['address_state'] = $geo['oblast'];
+        }
+
+        $data['address_city_display'] = Lapki_Main::format_city_location_from_geo($geo);
+
+        return $data;
     }
 
     /**
@@ -309,8 +399,9 @@ class Lapki_Animal extends Lapki_Model {
         ];
         
         $data = wp_parse_args($data, $defaults);
+        $data = self::maybe_fill_geo_from_city($data);
         $data = self::prepare_data($data);
-        
+
         $result = $wpdb->insert(
             self::get_table_name(),
             $data,
@@ -329,8 +420,9 @@ class Lapki_Animal extends Lapki_Model {
      */
     public static function update($id, $data) {
         global $wpdb;
-        
+
         $data['updated_at'] = current_time('mysql');
+        $data = self::maybe_fill_geo_from_city($data);
         $data = self::prepare_data($data);
 
         $result = $wpdb->update(
@@ -380,6 +472,35 @@ class Lapki_Animal extends Lapki_Model {
                 FROM " . self::get_table_name();
         
         return $wpdb->get_row($sql, ARRAY_A);
+    }
+
+    /**
+     * Кількість тварин по типу (виду) — для сторінки статистики.
+     * Повертає [['type' => 'cat', 'cnt' => 22], ...], відсортовано за спаданням.
+     */
+    public static function count_by_type() {
+        global $wpdb;
+
+        return $wpdb->get_results(
+            "SELECT type, COUNT(*) as cnt FROM " . self::get_table_name() . "
+             GROUP BY type ORDER BY cnt DESC",
+            ARRAY_A
+        );
+    }
+
+    /**
+     * Кількість тварин, доданих у діапазоні дат [$from, $to] включно
+     * (формат 'Y-m-d', порівняння за DATE(created_at)).
+     */
+    public static function count_added_between($from, $to) {
+        global $wpdb;
+
+        return (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM " . self::get_table_name() . "
+             WHERE DATE(created_at) BETWEEN %s AND %s",
+            $from,
+            $to
+        ));
     }
 
     /**
@@ -452,7 +573,7 @@ class Lapki_Animal extends Lapki_Model {
     private static function get_format_array($data) {
         $format = [];
         foreach ($data as $key => $value) {
-            if (in_array($key, ['id', 'organization_id'])) {
+            if (in_array($key, ['id', 'organization_id', 'created_by_user_id'])) {
                 $format[] = '%d';
             } elseif (in_array($key, ['latitude', 'longitude'])) {
                 $format[] = '%f';
@@ -483,6 +604,7 @@ class Lapki_Organization extends Lapki_Model {
         if ($organization) {
             // Додаємо медіафайли
             $organization['media'] = Lapki_Media::get_by_entity('organization', $id);
+            $organization['primary_photo'] = Lapki_Media::get_primary_photo('organization', $id);
             // Додаємо кількість тварин
             $organization['animals_count'] = $wpdb->get_var($wpdb->prepare(
                 "SELECT COUNT(*) FROM " . Lapki_Animal::get_table_name() . " WHERE organization_id = %d AND status = 'adoptable'",
@@ -556,8 +678,14 @@ class Lapki_Organization extends Lapki_Model {
         $sql .= " LIMIT %d OFFSET %d";
         $sql_params[] = (int)$params['limit'];
         $sql_params[] = (int)$params['offset'];
-        
-        return $wpdb->get_results($wpdb->prepare($sql, $sql_params), ARRAY_A);
+
+        $organizations = $wpdb->get_results($wpdb->prepare($sql, $sql_params), ARRAY_A);
+
+        foreach ($organizations as &$organization) {
+            $organization['primary_photo'] = Lapki_Media::get_primary_photo('organization', $organization['id']);
+        }
+
+        return $organizations;
     }
 
     /**
@@ -576,9 +704,41 @@ class Lapki_Organization extends Lapki_Model {
         );
     }
 
+    /**
+     * Те саме, що Lapki_Animal::maybe_fill_geo_from_city() — координати
+     * (якщо їх немає), область (завжди) і кешований підпис місцезнаходження
+     * (city_display) з довідника wp_lapki_geo за katottg. Поле міста тут
+     * зветься city_katottg/state/city_display, а не
+     * address_city_katottg/address_state/address_city_display.
+     * Ручні координати мають пріоритет і не перезаписуються.
+     */
+    private static function maybe_fill_geo_from_city($data) {
+        if (empty($data['city_katottg'])) {
+            return $data;
+        }
+
+        $geo = Lapki_Geo::get_by_katottg_code($data['city_katottg']);
+        if (!$geo) {
+            return $data;
+        }
+
+        if (empty($data['latitude']) && empty($data['longitude']) && $geo['latitude'] !== null && $geo['longitude'] !== null) {
+            $data['latitude'] = $geo['latitude'];
+            $data['longitude'] = $geo['longitude'];
+        }
+
+        if (!empty($geo['oblast'])) {
+            $data['state'] = $geo['oblast'];
+        }
+
+        $data['city_display'] = Lapki_Main::format_city_location_from_geo($geo);
+
+        return $data;
+    }
+
     public static function create($data) {
         global $wpdb;
-        
+
         $defaults = [
             'type' => 'individual',
             'country' => 'UA',
@@ -586,10 +746,11 @@ class Lapki_Organization extends Lapki_Model {
             'created_at' => current_time('mysql'),
             'updated_at' => current_time('mysql')
         ];
-        
+
         $data = wp_parse_args($data, $defaults);
+        $data = self::maybe_fill_geo_from_city($data);
         $data = self::prepare_data($data);
-        
+
         $result = $wpdb->insert(
             self::get_table_name(),
             $data
@@ -602,6 +763,7 @@ class Lapki_Organization extends Lapki_Model {
         global $wpdb;
 
         $data['updated_at'] = current_time('mysql');
+        $data = self::maybe_fill_geo_from_city($data);
         $data = self::prepare_data($data);
         unset($data['id']);
 
@@ -621,11 +783,13 @@ class Lapki_Organization extends Lapki_Model {
     }
 
     /**
-     * Отримати організацію(ї), до якої прив'язаний WP-користувач як учасник
-     * (власник або член) — через таблицю членства, не через legacy-колонку
-     * wp_user_id. Один користувач належить не більш ніж до однієї організації,
-     * тож масив завжди містить 0 або 1 елемент — сигнатура (масив) лишена
-     * такою ж, як і була, щоб не чіпати наявних викликів.
+     * Організації, до яких ПІДТВЕРДЖЕНО прив'язаний WP-користувач (власник
+     * або член) — через таблицю членства, не через legacy-колонку wp_user_id.
+     * Користувач тепер може належати до кількох організацій одночасно, тож
+     * масив може містити більше одного елемента. Заявки, що очікують
+     * підтвердження (status='pending'), сюди навмисно не потрапляють —
+     * інакше користувач отримав би доступ (напр. до заявок на усиновлення
+     * організації) ще до схвалення власником.
      *
      * @param int $wp_user_id
      * @return array
@@ -636,8 +800,9 @@ class Lapki_Organization extends Lapki_Model {
         return $wpdb->get_results($wpdb->prepare(
             "SELECT o.* FROM " . self::get_table_name() . " o
              JOIN " . Lapki_Organization_Member::get_table_name() . " m ON m.organization_id = o.id
-             WHERE m.wp_user_id = %d",
-            $wp_user_id
+             WHERE m.wp_user_id = %d AND m.status = %s",
+            $wp_user_id,
+            Lapki_Organization_Member::STATUS_APPROVED
         ), ARRAY_A);
     }
 
@@ -656,9 +821,10 @@ class Lapki_Organization extends Lapki_Model {
 
 /**
  * Членство користувачів в організаціях (many-to-many: одна організація —
- * багато користувачів; один користувач — не більше однієї організації).
- * Замінює стару модель "1 організація = 1 власник" (organizations.wp_user_id),
- * яка лишається в таблиці лише як історичний "хто створив".
+ * багато користувачів; один користувач може бути учасником кількох
+ * організацій одночасно). Приєднання до вже існуючої організації йде через
+ * заявку (status='pending'), яку підтверджує чи відхиляє власник —
+ * реєстрація власної нової організації дає membership одразу 'approved'.
  */
 class Lapki_Organization_Member extends Lapki_Model {
     protected static $table_name = 'lapki_organization_members';
@@ -666,59 +832,104 @@ class Lapki_Organization_Member extends Lapki_Model {
     const ROLE_OWNER = 'owner';
     const ROLE_MEMBER = 'member';
 
+    const STATUS_APPROVED = 'approved';
+    const STATUS_PENDING = 'pending';
+
     /**
-     * Членство поточного користувача (з даними організації) або null
+     * Усі організації користувача (з даними організації), опційно
+     * відфільтровані за статусом. Один користувач тепер може мати кілька
+     * рядків одночасно (на відміну від старого get_by_user(), що повертав одну).
      */
-    public static function get_by_user($wp_user_id) {
+    public static function get_all_by_user($wp_user_id, $status = null) {
+        global $wpdb;
+
+        $sql = "SELECT m.*, o.name as organization_name, o.type as organization_type
+                FROM " . self::get_table_name() . " m
+                JOIN " . Lapki_Organization::get_table_name() . " o ON o.id = m.organization_id
+                WHERE m.wp_user_id = %d";
+        $params = [$wp_user_id];
+
+        if ($status !== null) {
+            $sql .= " AND m.status = %s";
+            $params[] = $status;
+        }
+
+        $sql .= " ORDER BY m.created_at ASC";
+
+        return $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
+    }
+
+    /**
+     * Рядок членства (будь-якого статусу) для конкретної пари
+     * організація+користувач, або null. Для дедуплікації заявок — не можна
+     * подати другу заявку в ту саму організацію, поки перша не скасована.
+     */
+    public static function get_membership($organization_id, $wp_user_id) {
         global $wpdb;
 
         return $wpdb->get_row($wpdb->prepare(
-            "SELECT m.*, o.name as organization_name, o.type as organization_type
-             FROM " . self::get_table_name() . " m
-             JOIN " . Lapki_Organization::get_table_name() . " o ON o.id = m.organization_id
-             WHERE m.wp_user_id = %d",
+            "SELECT * FROM " . self::get_table_name() . " WHERE organization_id = %d AND wp_user_id = %d",
+            $organization_id,
             $wp_user_id
         ), ARRAY_A);
     }
 
     /**
      * Роль користувача в конкретній організації ('owner'/'member') або null,
-     * якщо не є учасником
+     * якщо не є ПІДТВЕРДЖЕНИМ учасником — заявка, що очікує підтвердження,
+     * жодних прав керування не дає.
      */
     public static function get_role($organization_id, $wp_user_id) {
         global $wpdb;
 
         return $wpdb->get_var($wpdb->prepare(
-            "SELECT role FROM " . self::get_table_name() . " WHERE organization_id = %d AND wp_user_id = %d",
+            "SELECT role FROM " . self::get_table_name() . " WHERE organization_id = %d AND wp_user_id = %d AND status = %s",
             $organization_id,
-            $wp_user_id
+            $wp_user_id,
+            self::STATUS_APPROVED
         ));
     }
 
     /**
-     * Усі учасники організації (з іменами користувачів)
+     * Учасники організації (з іменами користувачів), за замовчуванням лише підтверджені
      */
-    public static function get_members($organization_id) {
+    public static function get_members($organization_id, $status = self::STATUS_APPROVED) {
         global $wpdb;
 
-        return $wpdb->get_results($wpdb->prepare(
-            "SELECT m.*, u.display_name, u.user_email
-             FROM " . self::get_table_name() . " m
-             JOIN {$wpdb->users} u ON u.ID = m.wp_user_id
-             WHERE m.organization_id = %d
-             ORDER BY m.role ASC, m.created_at ASC",
-            $organization_id
-        ), ARRAY_A);
+        $sql = "SELECT m.*, u.display_name, u.user_email
+                FROM " . self::get_table_name() . " m
+                JOIN {$wpdb->users} u ON u.ID = m.wp_user_id
+                WHERE m.organization_id = %d";
+        $params = [$organization_id];
+
+        if ($status !== null) {
+            $sql .= " AND m.status = %s";
+            $params[] = $status;
+        }
+
+        $sql .= " ORDER BY m.role ASC, m.created_at ASC";
+
+        return $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
     }
 
     /**
-     * Приєднати користувача до організації. Повертає false, якщо користувач
-     * вже прив'язаний до будь-якої організації (спершу — leave()).
+     * Заявки на приєднання, що очікують підтвердження власником організації
      */
-    public static function join($organization_id, $wp_user_id, $role = self::ROLE_MEMBER) {
+    public static function get_pending_requests($organization_id) {
+        return self::get_members($organization_id, self::STATUS_PENDING);
+    }
+
+    /**
+     * Приєднати користувача до організації — 'approved' одразу (власник щойно
+     * створеної організації) або 'pending' (заявка на приєднання до чужої,
+     * очікує підтвердження). Повертає false, якщо для цієї пари
+     * організація+користувач вже є рядок (будь-якого статусу) — не блокує
+     * заявки в ІНШІ організації.
+     */
+    public static function join($organization_id, $wp_user_id, $role = self::ROLE_MEMBER, $status = self::STATUS_APPROVED) {
         global $wpdb;
 
-        if (self::get_by_user($wp_user_id)) {
+        if (self::get_membership($organization_id, $wp_user_id)) {
             return false;
         }
 
@@ -726,6 +937,7 @@ class Lapki_Organization_Member extends Lapki_Model {
             'organization_id' => $organization_id,
             'wp_user_id' => $wp_user_id,
             'role' => $role,
+            'status' => $status,
             'created_at' => current_time('mysql'),
         ]);
 
@@ -733,18 +945,111 @@ class Lapki_Organization_Member extends Lapki_Model {
     }
 
     /**
-     * Прибрати користувача з організації (незалежно від ролі)
+     * Підтвердити заявку на приєднання (лише власник організації) —
+     * pending → approved, і піднімає WP-роль заявника до волонтера, якщо в
+     * нього ще немає жодної ролі керування тваринами.
      */
-    public static function leave($wp_user_id) {
+    public static function approve_request($organization_id, $wp_user_id) {
         global $wpdb;
 
-        return $wpdb->delete(self::get_table_name(), ['wp_user_id' => $wp_user_id]) !== false;
+        $updated = $wpdb->update(
+            self::get_table_name(),
+            ['status' => self::STATUS_APPROVED],
+            ['organization_id' => $organization_id, 'wp_user_id' => $wp_user_id, 'status' => self::STATUS_PENDING]
+        );
+
+        if (!$updated) {
+            return false;
+        }
+
+        $user = get_userdata($wp_user_id);
+        if ($user && !array_intersect([Lapki_Roles::ROLE_SHELTER_ADMIN, Lapki_Roles::ROLE_VOLUNTEER, 'administrator'], $user->roles)) {
+            $user->set_role(Lapki_Roles::ROLE_VOLUNTEER);
+        }
+
+        return true;
     }
 
     /**
-     * Передати право власності іншому учаснику ТІЄЇ Ж організації —
-     * поточний власник стає 'member', обраний учасник стає 'owner'.
-     * Повертає false, якщо новий власник не є учасником цієї організації.
+     * Відхилити заявку на приєднання (лише власник організації) — рядок
+     * видаляється, заявник може подати нову заявку пізніше.
+     */
+    public static function reject_request($organization_id, $wp_user_id) {
+        global $wpdb;
+
+        return $wpdb->delete(self::get_table_name(), [
+            'organization_id' => $organization_id,
+            'wp_user_id' => $wp_user_id,
+            'status' => self::STATUS_PENDING,
+        ]) !== false;
+    }
+
+    /**
+     * Гарантувати, що користувач має організацію — додавати тварину може
+     * будь-хто залогінений, а не лише зареєстровані притулки/ГО. Якщо
+     * підтвердженого членства ще немає, автоматично створює мінімальну
+     * організацію типу 'individual' з даних акаунта (ім'я, email, телефон) і
+     * робить користувача її власником — той самий шлях, що й самостійна
+     * реєстрація організації через POST /organizations, просто без ручного
+     * кроку користувача.
+     */
+    public static function ensure_membership($wp_user_id) {
+        $existing = self::get_all_by_user($wp_user_id, self::STATUS_APPROVED);
+        if (!empty($existing)) {
+            return $existing[0];
+        }
+
+        $user = get_userdata($wp_user_id);
+        if (!$user) {
+            return null;
+        }
+
+        $name = trim($user->first_name . ' ' . $user->last_name);
+        if (empty($name)) {
+            $name = $user->display_name;
+        }
+
+        $org_id = Lapki_Organization::create([
+            'name' => $name,
+            'type' => 'individual',
+            'email' => $user->user_email,
+            'phone' => get_user_meta($wp_user_id, 'lapki_phone', true),
+            'wp_user_id' => $wp_user_id,
+        ]);
+
+        if (!$org_id || !self::join($org_id, $wp_user_id, self::ROLE_OWNER, self::STATUS_APPROVED)) {
+            return null;
+        }
+
+        if (!in_array('administrator', $user->roles, true)) {
+            $user->set_role(Lapki_Roles::ROLE_SHELTER_ADMIN);
+        }
+
+        $memberships = self::get_all_by_user($wp_user_id, self::STATUS_APPROVED);
+        return $memberships[0] ?? null;
+    }
+
+    /**
+     * Прибрати користувача з КОНКРЕТНОЇ організації — незалежно від статусу
+     * (працює і для скасування власної заявки, що очікує підтвердження, і
+     * для виходу з активного членства).
+     */
+    public static function leave($organization_id, $wp_user_id) {
+        global $wpdb;
+
+        return $wpdb->delete(self::get_table_name(), [
+            'organization_id' => $organization_id,
+            'wp_user_id' => $wp_user_id,
+        ]) !== false;
+    }
+
+    /**
+     * Передати право власності іншому підтвердженому учаснику ТІЄЇ Ж
+     * організації — поточний власник стає 'member', обраний — 'owner'.
+     * Повертає false, якщо новий власник не є підтвердженим учасником цієї
+     * організації. Оновлення навмисно прив'язане і до organization_id, і до
+     * wp_user_id — користувач може мати рядки в ІНШИХ організаціях, які не
+     * повинні зачіпатись.
      */
     public static function transfer_owner($organization_id, $current_owner_id, $new_owner_id) {
         global $wpdb;
@@ -753,8 +1058,16 @@ class Lapki_Organization_Member extends Lapki_Model {
             return false;
         }
 
-        $wpdb->update(self::get_table_name(), ['role' => self::ROLE_MEMBER], ['wp_user_id' => $current_owner_id]);
-        $wpdb->update(self::get_table_name(), ['role' => self::ROLE_OWNER], ['wp_user_id' => $new_owner_id]);
+        $wpdb->update(
+            self::get_table_name(),
+            ['role' => self::ROLE_MEMBER],
+            ['organization_id' => $organization_id, 'wp_user_id' => $current_owner_id]
+        );
+        $wpdb->update(
+            self::get_table_name(),
+            ['role' => self::ROLE_OWNER],
+            ['organization_id' => $organization_id, 'wp_user_id' => $new_owner_id]
+        );
 
         return true;
     }
@@ -765,6 +1078,21 @@ class Lapki_Organization_Member extends Lapki_Model {
  */
 class Lapki_Media extends Lapki_Model {
     protected static $table_name = 'lapki_media';
+
+    /**
+     * Файлова "теки"-область (scope) для Lapki_Main::get_image_*() за entity_type —
+     * фото тварин, організацій і аватарів користувачів зберігаються в окремих
+     * підпапках uploads/lapki/{images,org,user}/, щоб не змішувались.
+     */
+    private static function get_file_scope($entity_type) {
+        if ($entity_type === 'organization') {
+            return 'organization';
+        }
+        if ($entity_type === 'user') {
+            return 'user';
+        }
+        return 'animal';
+    }
 
     /**
      * Отримати один медіафайл за ID
@@ -838,7 +1166,7 @@ class Lapki_Media extends Lapki_Model {
 
         // Фото організацій зберігаються в окремій теці (uploads/lapki/org/),
         // не змішуючись з фото тварин (uploads/lapki/images/)
-        $scope = ($media['entity_type'] === 'organization') ? 'organization' : 'animal';
+        $scope = self::get_file_scope($media['entity_type']);
         $filename = $media['file_path'] ?? '';
 
         // Додати URL в залежності від типу медіа
@@ -908,7 +1236,7 @@ class Lapki_Media extends Lapki_Model {
     public static function upload_image($file, $entity_type, $entity_id, $animal_name = '', $is_primary = false, $sort_order = null) {
         // Перевірити файл
         if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
-            return new WP_Error('upload_error', 'Файл не завантажений');
+            return new WP_Error('upload_error', __('Файл не завантажений', 'lapki'));
         }
         
         // Валідація зображення
@@ -916,11 +1244,12 @@ class Lapki_Media extends Lapki_Model {
         $file_type = wp_check_filetype($file['name']);
         
         if (!in_array($file_type['type'], $allowed_types)) {
-            return new WP_Error('invalid_type', 'Невірний тип файлу');
+            return new WP_Error('invalid_type', __('Невірний тип файлу', 'lapki'));
         }
         
-        // Фото організацій зберігаються окремо від фото тварин (uploads/lapki/org/)
-        $scope = ($entity_type === 'organization') ? 'organization' : 'animal';
+        // Фото організацій/аватари користувачів зберігаються в окремих
+        // теках від фото тварин (uploads/lapki/org/, uploads/lapki/user/)
+        $scope = self::get_file_scope($entity_type);
 
         // Створити папки якщо їх немає
         Lapki_Main::create_media_directories();
@@ -931,14 +1260,14 @@ class Lapki_Media extends Lapki_Model {
 
         // Переміщення файлу
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
-            return new WP_Error('move_error', 'Не вдалося перемістити файл');
+            return new WP_Error('move_error', __('Не вдалося перемістити файл', 'lapki'));
         }
 
         // Отримати інформацію про зображення
         $image_info = getimagesize($destination);
         if ($image_info === false) {
             unlink($destination);
-            return new WP_Error('invalid_image', 'Файл не є валідним зображенням');
+            return new WP_Error('invalid_image', __('Файл не є валідним зображенням', 'lapki'));
         }
 
         // Створити thumbnail
@@ -966,7 +1295,7 @@ class Lapki_Media extends Lapki_Model {
         if (!$media_id) {
             // Видалити файли якщо не вдалося створити запис
             Lapki_Main::delete_image($filename, $scope);
-            return new WP_Error('db_error', 'Не вдалося створити запис в БД');
+            return new WP_Error('db_error', __('Не вдалося створити запис в БД', 'lapki'));
         }
 
         return [
@@ -995,7 +1324,7 @@ class Lapki_Media extends Lapki_Model {
         
         // Видалити файли якщо це фото
         if ($media['media_type'] === 'photo' && !empty($media['file_path'])) {
-            $scope = ($media['entity_type'] === 'organization') ? 'organization' : 'animal';
+            $scope = self::get_file_scope($media['entity_type']);
             Lapki_Main::delete_image($media['file_path'], $scope);
         }
 
@@ -1041,7 +1370,7 @@ class Lapki_Media extends Lapki_Model {
         ), ARRAY_A);
 
         // Видалити файли
-        $scope = ($entity_type === 'organization') ? 'organization' : 'animal';
+        $scope = self::get_file_scope($entity_type);
         foreach ($media_files as $media) {
             if ($media['media_type'] === 'photo' && !empty($media['file_path'])) {
                 Lapki_Main::delete_image($media['file_path'], $scope);
@@ -1057,6 +1386,33 @@ class Lapki_Media extends Lapki_Model {
             ],
             ['%s', '%d']
         );
+    }
+
+    /**
+     * Те саме, що delete_by_entity(), але лишає один вказаний медіафайл —
+     * для заміни аватара: спершу завантажуємо нове фото, тоді приберемо
+     * все старе, щоб користувач не лишився без аватара, якщо завантаження не вдасться.
+     */
+    public static function delete_by_entity_except($entity_type, $entity_id, $except_media_id) {
+        global $wpdb;
+
+        $media_files = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, file_path, media_type FROM " . self::get_table_name() . "
+             WHERE entity_type = %s AND entity_id = %d AND id != %d",
+            $entity_type, $entity_id, $except_media_id
+        ), ARRAY_A);
+
+        $scope = self::get_file_scope($entity_type);
+        foreach ($media_files as $media) {
+            if ($media['media_type'] === 'photo' && !empty($media['file_path'])) {
+                Lapki_Main::delete_image($media['file_path'], $scope);
+            }
+        }
+
+        return $wpdb->query($wpdb->prepare(
+            "DELETE FROM " . self::get_table_name() . " WHERE entity_type = %s AND entity_id = %d AND id != %d",
+            $entity_type, $entity_id, $except_media_id
+        ));
     }
 
     /**
@@ -1148,6 +1504,53 @@ class Lapki_Media extends Lapki_Model {
     }
 
     /**
+     * Хости популярних відеосервісів, з яких приймаємо посилання на відео —
+     * власного відеосховища й завантаження файлів немає (свідомо, див.
+     * parse_video_urls()), лише зовнішні посилання.
+     */
+    const VIDEO_HOST_WHITELIST = [
+        'youtube.com', 'youtu.be', 'vimeo.com', 'tiktok.com',
+        'dailymotion.com', 'facebook.com', 'fb.watch', 'instagram.com',
+    ];
+
+    /**
+     * Розібрати довільний текст на список посилань на відео з білого списку
+     * хостів — шукає URL-подібні токени за regex-маскою, а не ділить рядок
+     * по конкретному роздільнику, тож користувачу байдуже, чим розділяти
+     * (пробіл, кома, крапка з комою, новий рядок).
+     *
+     * @param string $raw_text
+     * @return string[] Унікальні валідні URL, порядок збережено
+     */
+    public static function parse_video_urls($raw_text) {
+        if (empty($raw_text)) {
+            return [];
+        }
+
+        preg_match_all('/https?:\/\/[^\s,;]+/i', (string) $raw_text, $matches);
+
+        $valid = [];
+        foreach ($matches[0] as $token) {
+            $url = esc_url_raw(rtrim($token, ".,;)]}'\""));
+            if (empty($url)) {
+                continue;
+            }
+
+            $host = strtolower((string) wp_parse_url($url, PHP_URL_HOST));
+            $host = preg_replace('/^www\./', '', $host);
+
+            foreach (self::VIDEO_HOST_WHITELIST as $allowed_host) {
+                if ($host === $allowed_host || substr($host, -strlen('.' . $allowed_host)) === '.' . $allowed_host) {
+                    $valid[$url] = true;
+                    break;
+                }
+            }
+        }
+
+        return array_keys($valid);
+    }
+
+    /**
      * Перевірити чи є головне фото
      */
     public static function has_primary($entity_type, $entity_id) {
@@ -1179,7 +1582,7 @@ class Lapki_Tag extends Lapki_Model {
     
     public static function delete_by_entity($entity_type, $entity_id) {
         global $wpdb;
-        
+
         return $wpdb->delete(
             self::get_table_name(),
             [
@@ -1189,6 +1592,74 @@ class Lapki_Tag extends Lapki_Model {
             ['%s', '%d']
         );
     }
+}
+
+/**
+ * Довідник населених пунктів України (КАТОТТГ) — wp_lapki_geo, засіяний з
+ * inc/data/settlements.csv (див. Lapki_Migrations::seed_geo()).
+ */
+class Lapki_Geo extends Lapki_Model {
+    protected static $table_name = 'lapki_geo';
+
+    /**
+     * Пошук населених пунктів для автодоповнення. Запит розбивається на
+     * токени по комі/пробілу («Привільне, Зап» → ["Привільне","Зап"]) — це
+     * дозволяє уточнювати вибір серед однойменних населених пунктів (той-таки
+     * «Привільне» існує 22 рази в різних областях), дописуючи фрагмент
+     * області/громади через кому, як у самому відображуваному форматі
+     * підказки. Кожен токен незалежно шукається в назві, області АБО громаді
+     * (LIKE), а рядок має задовольняти ВСІ токени одночасно (AND) — порядок
+     * токенів і те, в яке саме поле він потрапляє, значення не має.
+     * Порівняння регістронезалежне (колонки на `_ci`-колейшені).
+     *
+     * Населені пункти, чия ВЛАСНА назва починається з першого токена, завжди
+     * спливають першими (незалежно від типу — інакше запит, що збігається з
+     * реальною назвою села/селища, тонув би серед незв'язаних рядків, що
+     * просто містять цей самий підрядок десь у назві громади), місто серед
+     * них — ще вище (найімовірніший намір користувача — великий/обласний
+     * центр); решта збігів — за алфавітом назви, потім області/громади.
+     */
+    public static function search($query, $limit = 20) {
+        global $wpdb;
+
+        $tokens = preg_split('/[\s,]+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY);
+        $tokens = array_slice($tokens, 0, 5);
+
+        if (empty($tokens)) {
+            return [];
+        }
+
+        $where_parts = [];
+        $params = [];
+
+        foreach ($tokens as $token) {
+            $like = '%' . $wpdb->esc_like($token) . '%';
+            $where_parts[] = '(name LIKE %s OR oblast LIKE %s OR hromada LIKE %s)';
+            array_push($params, $like, $like, $like);
+        }
+
+        $params[] = $wpdb->esc_like($tokens[0]) . '%';
+        $params[] = $limit;
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT katottg_code, koatuu_code, name, type, oblast, raion, hromada, latitude, longitude
+             FROM " . self::get_table_name() . "
+             WHERE " . implode(' AND ', $where_parts) . "
+             ORDER BY (name LIKE %s) DESC, (type = 'місто') DESC, name ASC, oblast ASC, hromada ASC
+             LIMIT %d",
+            $params
+        ), ARRAY_A);
+    }
+
+    public static function get_by_katottg_code($katottg_code) {
+        global $wpdb;
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " WHERE katottg_code = %s",
+            $katottg_code
+        ), ARRAY_A);
+    }
+
 }
 
 /**
@@ -1298,9 +1769,43 @@ class Lapki_Attributes extends Lapki_Model {
     }
 
     /**
+     * Деякі атрибути мають природний логічний порядок, який не збігається з
+     * алфавітним сортуванням українських назв (напр. "Дорослий" < "Малюк"
+     * алфавітно, хоча за віком малюк молодший) — тут явно задаємо потрібний
+     * порядок value, решта (якщо є) лишається в кінці в довільному порядку.
+     */
+    private static $attr_value_order = [
+        'age' => ['baby', 'young', 'adult', 'senior'],
+        'size' => ['small', 'medium', 'large', 'xlarge'],
+    ];
+
+    /**
+     * Відсортувати значення атрибутів за self::$attr_value_order там, де він
+     * заданий для конкретного attr_name; решта атрибутів лишається як є.
+     */
+    private static function sort_attribute_values($attributes) {
+        foreach (self::$attr_value_order as $attr_name => $order) {
+            if (empty($attributes[$attr_name])) {
+                continue;
+            }
+
+            usort($attributes[$attr_name], function ($a, $b) use ($order) {
+                $pos_a = array_search($a['value'], $order, true);
+                $pos_b = array_search($b['value'], $order, true);
+                $pos_a = $pos_a === false ? count($order) : $pos_a;
+                $pos_b = $pos_b === false ? count($order) : $pos_b;
+                return $pos_a <=> $pos_b;
+            });
+        }
+
+        return $attributes;
+    }
+
+    /**
      * Отримати глобальні атрибути (entity_type = 'all'): age, gender, size, coat, status
      */
-    public static function get_global_attributes($lang = 'uk') {
+    public static function get_global_attributes($lang = null) {
+        $lang = $lang !== null ? $lang : Lapki_I18n::get_lang();
         global $wpdb;
 
         $results = $wpdb->get_results($wpdb->prepare(
@@ -1319,13 +1824,21 @@ class Lapki_Attributes extends Lapki_Model {
             ];
         }
 
-        return $attributes;
+        return self::sort_attribute_values($attributes);
     }
+
+    /**
+     * Типи тварин, які варто показувати першими (у цьому порядку) — кіт і
+     * собака явно найпоширеніші тварини для прилаштування в Україні, решта
+     * (кінь, кролик, пташка, інша) лишається за ними в алфавітному порядку.
+     */
+    private static $animal_type_order = ['cat', 'dog'];
 
     /**
      * Отримати всі типи тварин
      */
-    public static function get_animal_types($lang = 'uk') {
+    public static function get_animal_types($lang = null) {
+        $lang = $lang !== null ? $lang : Lapki_I18n::get_lang();
         global $wpdb;
 
         $results = $wpdb->get_results($wpdb->prepare(
@@ -1336,13 +1849,23 @@ class Lapki_Attributes extends Lapki_Model {
             $lang
         ), ARRAY_A);
 
+        $order = self::$animal_type_order;
+        usort($results, function ($a, $b) use ($order) {
+            $pos_a = array_search($a['type'], $order, true);
+            $pos_b = array_search($b['type'], $order, true);
+            $pos_a = $pos_a === false ? count($order) : $pos_a;
+            $pos_b = $pos_b === false ? count($order) : $pos_b;
+            return $pos_a <=> $pos_b;
+        });
+
         return $results;
     }
     
     /**
      * Отримати породи для типу тварини
      */
-    public static function get_breeds_by_type($type, $lang = 'uk') {
+    public static function get_breeds_by_type($type, $lang = null) {
+        $lang = $lang !== null ? $lang : Lapki_I18n::get_lang();
         global $wpdb;
         
         return $wpdb->get_results($wpdb->prepare(
@@ -1357,7 +1880,8 @@ class Lapki_Attributes extends Lapki_Model {
     /**
      * Отримати всі атрибути для типу
      */
-    public static function get_type_attributes($type, $lang = 'uk') {
+    public static function get_type_attributes($type, $lang = null) {
+        $lang = $lang !== null ? $lang : Lapki_I18n::get_lang();
         global $wpdb;
         
         $results = $wpdb->get_results($wpdb->prepare(
@@ -1375,8 +1899,31 @@ class Lapki_Attributes extends Lapki_Model {
                 'display_name' => $row['attr_display']
             ];
         }
-        
-        return $attributes;
+
+        return self::sort_attribute_values($attributes);
+    }
+
+    /**
+     * Людяне значення ОДНОГО attr_value з довідника (для показу "Додаткової
+     * інформації" тварини на публічній сторінці) — той самий пошук, що і
+     * get_type_attributes(), але для конкретної пари attr_name/attr_value.
+     * Якщо перекладу немає — повертає сире значення як є.
+     */
+    public static function get_attribute_display($type, $attr_name, $attr_value, $lang = null) {
+        $lang = $lang !== null ? $lang : Lapki_I18n::get_lang();
+        global $wpdb;
+
+        $display = $wpdb->get_var($wpdb->prepare(
+            "SELECT attr_display
+             FROM " . self::get_table_name() . "
+             WHERE entity = 'animal' AND (entity_type = %s OR entity_type = 'all')
+               AND attr_name = %s AND attr_value = %s AND lang = %s
+             ORDER BY (entity_type = %s) DESC
+             LIMIT 1",
+            $type, $attr_name, $attr_value, $lang, $type
+        ));
+
+        return $display !== null ? $display : $attr_value;
     }
 }
 
@@ -1422,6 +1969,40 @@ class Lapki_Application extends Lapki_Model {
         return $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
     }
 
+    /**
+     * Заявки, подані конкретним залогіненим користувачем (як заявником) —
+     * незалежно від організації/тварини. Для вкладки "Заявки на прилаштування"
+     * в кабінеті /profile/. Анонімні заявки (wp_user_id IS NULL, подані без
+     * входу в акаунт) сюди не потрапляють — прив'язати їх нема до кого.
+     */
+    public static function get_by_user($wp_user_id) {
+        global $wpdb;
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT a.*, an.name as animal_name, o.name as organization_name
+             FROM " . self::get_table_name() . " a
+             LEFT JOIN " . Lapki_Animal::get_table_name() . " an ON a.animal_id = an.id
+             LEFT JOIN " . Lapki_Organization::get_table_name() . " o ON a.organization_id = o.id
+             WHERE a.wp_user_id = %d
+             ORDER BY a.created_at DESC",
+            $wp_user_id
+        ), ARRAY_A);
+    }
+
+    /**
+     * Легкий COUNT для бейджа кількості заявок у навігації /profile/ —
+     * рахується на кожному завантаженні кабінету (не лише на вкладці
+     * "Заявки на прилаштування"), тож без JOIN і без вибірки самих рядків.
+     */
+    public static function count_by_user($wp_user_id) {
+        global $wpdb;
+
+        return (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM " . self::get_table_name() . " WHERE wp_user_id = %d",
+            $wp_user_id
+        ));
+    }
+
     public static function create($data) {
         global $wpdb;
 
@@ -1453,6 +2034,155 @@ class Lapki_Application extends Lapki_Model {
         global $wpdb;
 
         return $wpdb->delete(self::get_table_name(), ['id' => $id]) !== false;
+    }
+}
+
+/**
+ * Лог викликів "Покращити за допомогою ШІ" — для сторінки статистики
+ * (Lapki → Статистика).
+ */
+class Lapki_AI_Usage_Log extends Lapki_Model {
+    protected static $table_name = 'lapki_ai_usage_log';
+
+    /**
+     * $usage — те, що повернув Lapki_AI_Provider::improve_text() у ['usage'],
+     * напр. ['prompt_tokens' => .., 'completion_tokens' => .., 'total_tokens' => ..].
+     * Порожній масив (провал виклику, або провайдер не звітує токени) —
+     * записується як нулі.
+     */
+    public static function log($provider_id, $success, $wp_user_id = null, $usage = [], $error_code = null, $error_message = null) {
+        global $wpdb;
+
+        return $wpdb->insert(self::get_table_name(), [
+            'provider' => $provider_id,
+            'success' => $success ? 1 : 0,
+            'wp_user_id' => $wp_user_id ?: null,
+            'prompt_tokens' => (int) ($usage['prompt_tokens'] ?? 0),
+            'completion_tokens' => (int) ($usage['completion_tokens'] ?? 0),
+            'total_tokens' => (int) ($usage['total_tokens'] ?? 0),
+            'error_code' => $error_code ?: null,
+            'error_message' => $error_message ?: null,
+            'created_at' => current_time('mysql'),
+        ], ['%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s']) !== false;
+    }
+
+    /**
+     * Кількість викликів і токенів у діапазоні дат [$from, $to] включно
+     * (формат 'Y-m-d'). Повертає ['total' => int, 'success' => int,
+     * 'failed' => int, 'prompt_tokens' => int, 'completion_tokens' => int,
+     * 'total_tokens' => int].
+     */
+    public static function count_between($from, $to) {
+        global $wpdb;
+
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT COUNT(*) as total, SUM(success) as success,
+                    SUM(prompt_tokens) as prompt_tokens,
+                    SUM(completion_tokens) as completion_tokens,
+                    SUM(total_tokens) as total_tokens
+             FROM " . self::get_table_name() . "
+             WHERE DATE(created_at) BETWEEN %s AND %s",
+            $from,
+            $to
+        ), ARRAY_A);
+
+        $total = (int) ($row['total'] ?? 0);
+        $success = (int) ($row['success'] ?? 0);
+
+        return [
+            'total' => $total,
+            'success' => $success,
+            'failed' => $total - $success,
+            'prompt_tokens' => (int) ($row['prompt_tokens'] ?? 0),
+            'completion_tokens' => (int) ($row['completion_tokens'] ?? 0),
+            'total_tokens' => (int) ($row['total_tokens'] ?? 0),
+        ];
+    }
+
+    /**
+     * Розбивка невдалих викликів по коду помилки (ai_timeout,
+     * ai_connection_failed, ai_request_failed, ...) у діапазоні дат
+     * [$from, $to] включно. Повертає [['error_code' => ..., 'cnt' => ...], ...],
+     * відсортовано за спаданням кількості.
+     */
+    public static function get_error_breakdown($from, $to) {
+        global $wpdb;
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT error_code, COUNT(*) as cnt
+             FROM " . self::get_table_name() . "
+             WHERE success = 0 AND DATE(created_at) BETWEEN %s AND %s
+             GROUP BY error_code ORDER BY cnt DESC",
+            $from,
+            $to
+        ), ARRAY_A);
+    }
+}
+
+/**
+ * Шаблони email-повідомлень, що надсилає сайт автоматично (Lapki →
+ * Email-шаблони). Редагувати можна лише subject/body — призначення (name),
+ * slug і placeholders задаються при засіванні і в UI не змінюються.
+ */
+class Lapki_Email_Template extends Lapki_Model {
+    protected static $table_name = 'lapki_email';
+
+    const SLUG_APPLICATION_OWNER_NOTIFICATION = 'application_owner_notification';
+
+    public static function get_all() {
+        global $wpdb;
+
+        return $wpdb->get_results("SELECT * FROM " . self::get_table_name() . " ORDER BY id ASC", ARRAY_A);
+    }
+
+    public static function get($id) {
+        global $wpdb;
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " WHERE id = %d",
+            $id
+        ), ARRAY_A);
+    }
+
+    public static function get_by_slug($slug) {
+        global $wpdb;
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::get_table_name() . " WHERE slug = %s",
+            $slug
+        ), ARRAY_A);
+    }
+
+    public static function update($id, $data) {
+        global $wpdb;
+
+        $allowed = array_intersect_key($data, array_flip(['subject', 'body']));
+        $allowed['updated_at'] = current_time('mysql');
+
+        return $wpdb->update(self::get_table_name(), $allowed, ['id' => $id]) !== false;
+    }
+
+    /**
+     * Підставити {мітки} у subject/body шаблону за slug. $tags — асоціативний
+     * масив без фігурних дужок у ключах, напр. ['animal_name' => 'Барсик'].
+     * Повертає ['subject' => .., 'body' => ..] або null, якщо шаблону немає.
+     */
+    public static function render($slug, $tags) {
+        $template = self::get_by_slug($slug);
+
+        if (!$template) {
+            return null;
+        }
+
+        $replace_pairs = [];
+        foreach ($tags as $key => $value) {
+            $replace_pairs['{' . $key . '}'] = $value;
+        }
+
+        return [
+            'subject' => strtr($template['subject'], $replace_pairs),
+            'body' => strtr($template['body'], $replace_pairs),
+        ];
     }
 }
 ?>
