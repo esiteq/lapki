@@ -48,14 +48,14 @@ $avatar_letter = mb_strtoupper(mb_substr($current_user->display_name, 0, 1));
 
                 <form id="lapki-edit-profile-form" class="row g-3" novalidate>
                     <div class="col-md-6">
-                        <label class="form-label"><?php esc_html_e('Прізвище *', 'lapki'); ?></label>
-                        <input type="text" name="last_name" class="form-control" value="<?php echo esc_attr($current_user->last_name); ?>" required>
-                        <div class="invalid-feedback"><?php esc_html_e('Будь ласка, вкажіть прізвище.', 'lapki'); ?></div>
-                    </div>
-                    <div class="col-md-6">
                         <label class="form-label"><?php esc_html_e("Ім'я *", 'lapki'); ?></label>
                         <input type="text" name="first_name" class="form-control" value="<?php echo esc_attr($current_user->first_name); ?>" required>
                         <div class="invalid-feedback"><?php esc_html_e("Будь ласка, вкажіть ім'я.", 'lapki'); ?></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label"><?php esc_html_e('Прізвище *', 'lapki'); ?></label>
+                        <input type="text" name="last_name" class="form-control" value="<?php echo esc_attr($current_user->last_name); ?>" required>
+                        <div class="invalid-feedback"><?php esc_html_e('Будь ласка, вкажіть прізвище.', 'lapki'); ?></div>
                     </div>
 
                     <div class="col-12">

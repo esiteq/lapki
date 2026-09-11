@@ -55,14 +55,14 @@ $context_notice = $context_notices[$context] ?? '';
         <div class="tab-pane fade show active" id="lapki-tab-signup" role="tabpanel" aria-labelledby="lapki-tab-signup-btn">
             <form id="lapki-signup-form" class="row g-3" novalidate>
                 <div class="col-md-6">
-                    <label class="form-label"><?php esc_html_e('Прізвище *', 'lapki'); ?></label>
-                    <input type="text" name="last_name" class="form-control" required>
-                    <div class="invalid-feedback"><?php esc_html_e('Будь ласка, вкажіть прізвище.', 'lapki'); ?></div>
-                </div>
-                <div class="col-md-6">
                     <label class="form-label"><?php esc_html_e("Ім'я *", 'lapki'); ?></label>
                     <input type="text" name="first_name" class="form-control" required>
                     <div class="invalid-feedback"><?php esc_html_e("Будь ласка, вкажіть ім'я.", 'lapki'); ?></div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label"><?php esc_html_e('Прізвище *', 'lapki'); ?></label>
+                    <input type="text" name="last_name" class="form-control" required>
+                    <div class="invalid-feedback"><?php esc_html_e('Будь ласка, вкажіть прізвище.', 'lapki'); ?></div>
                 </div>
 
                 <div class="col-md-6">
