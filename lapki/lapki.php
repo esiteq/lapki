@@ -26,7 +26,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LAPKI_VERSION', '2.0.46');
+define('LAPKI_VERSION', '2.0.47');
 define('LAPKI_PLUGIN_FILE', __FILE__);
 define('LAPKI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LAPKI_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -102,7 +102,20 @@ class Lapki_Main {
      * Ініціалізація
      */
     public static function init() {
-        add_action('init', [__CLASS__, 'setup']);
+        // Пріоритет 1 — до Lapki_Help::register_post_type()/register_taxonomy()
+        // та решти 'init'-хуків пріоритету 10: ті одразу викликають __(..., 'lapki')
+        // для лейблів. Тема лапки має ТОЙ САМИЙ текстдомен 'lapki', що й плагін
+        // (style.css: Text Domain: lapki) — WP-ядро (wp-settings.php) саме через
+        // це ще до 'init' автоматично викликає WP_Theme::load_textdomain() для
+        // теми й реєструє її (неіснуючу) папку languages/ як шлях для домену
+        // 'lapki'. Якщо БУДЬ-ЯКИЙ __(..., 'lapki') виконається раніше, ніж рядок
+        // нижче встигне перевизначити шлях на теку плагіна, WordPress кешує
+        // порожній NOOP_Translations для домену на всю решту запиту — і жоден
+        // подальший виклик load_plugin_textdomain() це вже не виправить
+        // (get_translations_for_domain() більше не звертається до реєстру, як
+        // тільки $l10n['lapki'] хоч раз встановлено). Звідси й був баг "UA/EN
+        // перемикання не працює" — залежало від порядку 'init'-колбеків.
+        add_action('init', [__CLASS__, 'setup'], 1);
 
         // Автоматичний апгрейд схеми БД/ролей для вже активних інсталяцій
         // (без потреби деактивувати/активувати плагін після оновлення коду)
